@@ -40,7 +40,8 @@ async def rerank_documents_with_flag(query, docs, filenames, top_k=3):
         for i in range(min(top_k, len(reranked))):
             ((doc, filename), score) = reranked[i]
             reranked_docs.append(doc)
-            reranked_filenames.append(filename)
+            if filename not in reranked_filenames:
+                reranked_filenames.append(filename)
         return reranked_docs, reranked_filenames
     except Exception as e:
         print(f"Reranking error: {str(e)}, using original scores")
