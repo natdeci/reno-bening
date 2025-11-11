@@ -1,0 +1,76 @@
+# .github/workflows/trivy-security.yml
+name: Trivy Security (Repo + Container)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # needed for SARIF uploads (public repos okay)
+
+env:
+  TRIVY_SEVERITY: CRITICAL,HIGH
+
+jobs:
+  repo-scan:
+    name: Trivy – Repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: ${{ runner.os }}-trivydb
+
+      # SARIF (gates the build)
+      - name: Trivy FS (SARIF, fail on HIGH/CRITICAL)
+        id: trivy_fs_sarif
+        uses: aquasecurity/trivy-action@v0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          vuln-type: os,library
+          severity: ${{ env.TRIVY_SEVERITY }}
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-fs.sarif
+          limit-severities-for-sarif: true
+          exit-code: '1'
+
+      # Human-readable table for logs + summary
+      - name: Trivy FS (table report for summary)
+        if: always()
+        uses: aquasecurity/trivy-action@v0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          vuln-type: os,library
+          severity: ${{ env.TRIVY_SEVERITY }}
+          ignore-unfixed: true
+          format: table
+          output: trivy-fs.txt
+          exit-code: '0'
+
+      - name: Add FS report to Job Summary
+        if: always()
+        run: |
+          {
+            echo "### Trivy repository findings";
+            echo;
+            echo '```';
+            cat trivy-fs.txt || true
+            echo '```';
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload FS text report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-fs-report
+          path: trivy-fs.txt
+          retention-days: 7
