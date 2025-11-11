@@ -10,7 +10,7 @@ from fastapi import UploadFile
 
 load_dotenv()
 
-MIN_TEXT_THRESHOLD = 100
+MIN_TEXT_THRESHOLD = 1000
 IMAGE_DPI = 200
 
 VLM_BASE_URL = os.getenv("OLLAMA_BASE_URL")
@@ -27,8 +27,8 @@ class PDFExtractorHandler:
 
     def _analyze_page(self, fitz_page):
         text = fitz_page.get_text()
-        if len(text) < MIN_TEXT_THRESHOLD:
-            return True
+        if len(text) > MIN_TEXT_THRESHOLD:
+            return False
         if len(fitz_page.get_drawings()) > 0:
             return True
         if len(fitz_page.get_images()) > 0:
