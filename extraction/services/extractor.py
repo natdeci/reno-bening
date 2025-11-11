@@ -54,9 +54,10 @@ class PDFExtractorHandler:
         try:
             async with httpx.AsyncClient(timeout=600) as client:
                 response = await client.post(
-                    f"{self.base_url}/api/generate", 
+                    f"{self.base_url}api/generate", 
                     json=payload
                 )
+            # response = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=600)
                 response.raise_for_status()
                 data = response.json()
                 return data.get("response", "").strip()

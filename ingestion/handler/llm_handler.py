@@ -22,7 +22,7 @@ class LLMHandler:
         
         try:
             async with session.post(
-                f"{self.base_url}/api/generate",
+                f"{self.base_url}api/generate",
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=600)
             ) as resp:

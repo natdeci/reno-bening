@@ -61,9 +61,9 @@ def parse_chunk_text(chunk_text: str, default_metadata: dict = None):
     wib = timezone(timedelta(hours=7))
     metadata.setdefault("uploaded_date", datetime.now(tz=wib).strftime("%Y-%m-%d %H:%M:%S"))
 
-    header_title = re.search(r"document_title:\s*(.*)", chunk_text)
-    header_topic = re.search(r"document_topic:\s*(.*)", chunk_text)
-    header_desc = re.search(r"chunk_description:\s*(.*)", chunk_text)
+    header_title = re.search(r"document[\s_]?title:\s*(.*)", chunk_text, re.IGNORECASE)
+    header_topic = re.search(r"document[\s_]?topic:\s*(.*)", chunk_text, re.IGNORECASE)
+    header_desc = re.search(r"chunk[\s_]?description:\s*(.*)", chunk_text, re.IGNORECASE)
     print(header_title)
     print("--------------------")
     print(header_topic)
