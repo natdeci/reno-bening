@@ -119,6 +119,7 @@ class PDFRoutes:
             category: str = Form(...),
             filename: str = Form(...),
             file: UploadFile = File(...),
+            key_checked: str = Depends(verify_api_key)
         ):
             content = await file.read()
             text = content.decode("utf-8").strip()
