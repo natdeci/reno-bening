@@ -1,5 +1,5 @@
 # .github/workflows/trivy-security.yml
-name: Trivy Security (Repo + Container)
+name: Trivy Security Repo scan
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
       # SARIF (gates the build)
       - name: Trivy FS (SARIF, fail on HIGH/CRITICAL)
         id: trivy_fs_sarif
-        uses: aquasecurity/trivy-action@v0.33.1
+        uses: aquasecurity/trivy-action@vmaster
         with:
           scan-type: fs
           scan-ref: .
@@ -45,7 +45,7 @@ jobs:
       # Human-readable table for logs + summary
       - name: Trivy FS (table report for summary)
         if: always()
-        uses: aquasecurity/trivy-action@v0.33.1
+        uses: aquasecurity/trivy-action@vmaster
         with:
           scan-type: fs
           scan-ref: .
