@@ -27,12 +27,12 @@ class DocumentProcessor:
         return processed_chunks
     
     async def _process_single_chunk(self, chunk: str, doc_metadata: dict = None):
-        topic, description = await self.llm_handler.extract_document_info(chunk)
+        # topic, description = await self.llm_handler.extract_document_info(chunk)
         
         chunk_data = {
             "text": chunk.strip(),
-            "topic": topic,
-            "description": description
+            # "topic": topic,
+            # "description": description
         }
         
         if doc_metadata:

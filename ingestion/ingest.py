@@ -50,8 +50,8 @@ def parse_chunk_text(chunk_text: str, default_metadata: dict = None):
             metadata["file_id"] = line.split(":", 1)[1].strip()
         elif line.lower().startswith("filename:"):
             metadata["filename"] = line.split(":", 1)[1].strip()
-        elif line.lower().startswith("document topic:"):
-            metadata["topic"] = line.split(":", 1)[1].strip()
+        # elif line.lower().startswith("document topic:"):
+            # metadata["topic"] = line.split(":", 1)[1].strip()
         elif line.lower().startswith("chunk index:"):
             metadata["chunk_index"] = line.split(":", 1)[1].strip()
         else:
@@ -61,18 +61,18 @@ def parse_chunk_text(chunk_text: str, default_metadata: dict = None):
     wib = timezone(timedelta(hours=7))
     metadata.setdefault("uploaded_date", datetime.now(tz=wib).strftime("%Y-%m-%d %H:%M:%S"))
 
-    header_title = re.search(r"document[\s_]?title:\s*(.*)", chunk_text, re.IGNORECASE)
-    header_topic = re.search(r"document[\s_]?topic:\s*(.*)", chunk_text, re.IGNORECASE)
-    header_desc = re.search(r"chunk[\s_]?description:\s*(.*)", chunk_text, re.IGNORECASE)
-    print(header_title)
-    print("--------------------")
-    print(header_topic)
-    print("--------------------")
-    print(header_desc)
-    title = header_title.group(1).strip()
-    topic = header_topic.group(1).strip()
-    desc = header_desc.group(1).strip()
-    print(topic)
+    # header_title = re.search(r"document[\s_]?title:\s*(.*)", chunk_text, re.IGNORECASE)
+    # header_topic = re.search(r"document[\s_]?topic:\s*(.*)", chunk_text, re.IGNORECASE)
+    # header_desc = re.search(r"chunk[\s_]?description:\s*(.*)", chunk_text, re.IGNORECASE)
+    # print(header_title)
+    # print("--------------------")
+    # print(header_topic)
+    # print("--------------------")
+    # print(header_desc)
+    # title = header_title.group(1).strip()
+    # topic = header_topic.group(1).strip()
+    # desc = header_desc.group(1).strip()
+    # print(topic)
 
     # --- Deteksi pola FAQ ---
     faq_pattern = r"Q:\s*(.*?)\s*A:\s*(.*?)(?=\s*Q:|\Z)"
@@ -82,9 +82,9 @@ def parse_chunk_text(chunk_text: str, default_metadata: dict = None):
     if matches:
         for i, (q, a) in enumerate(matches):
             qa_text = (
-                f"document_title: {title}\n"
-                f"document_topic: {topic}\n"
-                f"chunk_description: {desc}\n"
+                # f"document_title: {title}\n"
+                # f"document_topic: {topic}\n"
+                # f"chunk_description: {desc}\n"
                 f"Q: {q.strip()}\nA: {a.strip()}"
             )
             faq_meta = metadata.copy()
@@ -92,11 +92,11 @@ def parse_chunk_text(chunk_text: str, default_metadata: dict = None):
             docs.append(Document(page_content=qa_text, metadata=faq_meta))
         return docs
 
-    content_parts = []
-    if metadata.get("title"): content_parts.append(f"Judul Dokumen: {metadata['title']}")
-    if metadata.get("topic"): content_parts.append(f"Topik: {metadata['topic']}")
-    if metadata.get("description"): content_parts.append(f"Deskripsi: {metadata['description']}")
-    content_parts.append(main_text)
-    content = "\n".join(content_parts).strip()
+    # content_parts = []
+    # if metadata.get("title"): content_parts.append(f"Judul Dokumen: {metadata['title']}")
+    # if metadata.get("topic"): content_parts.append(f"Topik: {metadata['topic']}")
+    # if metadata.get("description"): content_parts.append(f"Deskripsi: {metadata['description']}")
+    # content_parts.append(main_text)
+    # content = "\n".join(content_parts).strip()
 
-    return [Document(page_content=content, metadata=metadata)]
+    return [Document(page_content=main_text, metadata=metadata)]

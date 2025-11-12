@@ -27,6 +27,7 @@ class PDFRoutes:
             file: UploadFile = File(...),
             key_checked: str = Depends(verify_api_key)
         ):
+            print("Processing...")
             text = await self.handler.extract_text(file, category)
             
             # proses ingestion
@@ -39,15 +40,16 @@ class PDFRoutes:
             for chunk_data in processed_chunks:
                 chunk_meta = chunk_data.copy()
                 chunk_meta.pop("text", None)
-                chunk_meta.pop("description", None)
+                # chunk_meta.pop("description", None)
+                docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
 
-                chunk_text = (
-                    f"Document Title: {chunk_data.get('filename','')}\n"
-                    f"Document Topic: {chunk_data.get('topic','')}\n"
-                    f"Chunk_Description: {chunk_data.get('description','')}\n"
-                    f"{chunk_data.get('text','')}"
-                )
-                docs = parse_chunk_text(chunk_text, default_metadata=chunk_meta)
+                # chunk_text = (
+                #     f"Document Title: {chunk_data.get('filename','')}\n"
+                #     f"Document Topic: {chunk_data.get('topic','')}\n"
+                #     f"Chunk_Description: {chunk_data.get('description','')}\n"
+                #     f"{chunk_data.get('text','')}"
+                # )
+                # docs = parse_chunk_text(chunk_text, default_metadata=chunk_meta)
                 all_docs.extend(docs)
             
             # qdrant
@@ -137,7 +139,8 @@ class PDFRoutes:
 
           
             if has_delimiter or has_faq_pattern:
-                docs = parse_chunk_text(text, default_metadata=base_metadata)
+                # docs = parse_chunk_text(text, default_metadata=base_metadata)
+                docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
                 all_docs.extend(docs)
             else:
                 processed_chunks = await self.processor.process_text(
@@ -148,16 +151,16 @@ class PDFRoutes:
                 for chunk_data in processed_chunks:
                     chunk_meta = chunk_data.copy()
                     chunk_meta.pop("text", None)
-                    chunk_meta.pop("description", None)
+                    # chunk_meta.pop("description", None)
 
-                    chunk_text = (
-                        f"Document Title: {chunk_data.get('filename','')}\n"
-                        f"Document Topic: {chunk_data.get('topic','')}\n"
-                        f"Chunk_Description: {chunk_data.get('description','')}\n"
-                        f"{chunk_data.get('text','')}"
-                    )
+                    # chunk_text = (
+                    #     f"Document Title: {chunk_data.get('filename','')}\n"
+                    #     f"Document Topic: {chunk_data.get('topic','')}\n"
+                    #     f"Chunk_Description: {chunk_data.get('description','')}\n"
+                    #     f"{chunk_data.get('text','')}"
+                    # )
 
-                    docs = parse_chunk_text(chunk_text, default_metadata=chunk_meta)
+                    docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
                     all_docs.extend(docs)
 
             # --- Upsert ke Qdrant ---

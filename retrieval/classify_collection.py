@@ -95,7 +95,7 @@ Additional instructions:
         ],
         "stream": False
         }
-    response = requests.post("http://103.67.43.244:11434/api/chat", json=payload)
+    response = requests.post(f"{os.getenv("OLLAMA_BASE_URL")}api/chat", json=payload)
     response.raise_for_status()
     data = response.json()
     print("Exiting classify_collection method")

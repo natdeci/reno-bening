@@ -5,7 +5,7 @@ from .generate_answer import generate_answer
 from .knowledge_retrieval import retrieve_knowledge
 from .query_embedding_converter import convert_to_embedding
 from .rewriter import rewrite_query
-from .rerank import rerank_documents_with_flag
+# from .rerank import rerank_documents_with_flag
 from .classify_collection import classify_collection
 from .flag_message import flag_message
 from .ingest_category import ingest_category
@@ -26,7 +26,7 @@ class ChatflowHandler:
         self.classifier = classify_collection
         self.converter = convert_to_embedding
         self.retriever = retrieve_knowledge
-        self.rerank = rerank_documents_with_flag
+        # self.rerank = rerank_documents_with_flag
         self.rerank_new = rerank_documents
         self.llm = generate_answer
         self.flag = flag_message
