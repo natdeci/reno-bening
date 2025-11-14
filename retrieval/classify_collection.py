@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 import requests
+from datetime import datetime, timezone
+import pytz
 
 load_dotenv()
 
@@ -8,10 +10,10 @@ async def classify_collection(user_query: str, history_context: str) -> str:
     print("Entering classify_collection method")
     prompt = """
 <introduction>
-You are an expert customer service in Indonesia's Coordinating Board (Badan Koordinasi Penanaman Modal or BKPM), excelling in categorizing a customer's question.
-Your task is to determine to which category the customer's question/query/request is, based on a given description about each category.
+You are an expert customer service of Badan Koordinasi Penanaman Modal (BKPM), excelling in categorizing a customer's question.
+Your task is to determine what category user's query belongs to, based on a given description about each category.
 You will receive <user_query> to be classified. The user_query is in *Bahasa Indonesia*
-You will receive <context> for added context to help you classify the query, <context> is the chat history of you and this user.
+You will receive <context> which is the chat history of you and this user to help you get more context.
 </introduction>
 
 <guide>
@@ -57,7 +59,9 @@ If the query is classified as "Panduan", output: panduan_collection
 If the query is classified as "Peraturan", output: peraturan_collection
 If the query is classified as "Uraian", output: uraian_collection
 If the query is classified as "Helpdesk", output: helpdesk
-However, if user's query is not related to anything involving BKPM or the topic sorrounding business or investment, please output: skip_collection_check
+If the user's query is only a greeting, output: greeting_query
+If the user's query is only a thank you, output: thank_you
+If user's query is not related to anything involving BKPM or the topic sorrounding business or investment, please output: skip_collection_check
 </output>
 
 <instructions>
@@ -65,10 +69,9 @@ Additional instructions:
 - Input will be in Bahasa Indonesia.
 - You must follow the given <guide> to classify the query.
 - You can use <context> to help classification process in case <user_query> needs more context.
-- You may not use <context> if it is blank.
 - Only output the phrase like instructed and NOTHING ELSE.
-- Categorize based on which category make the most sense.
-- Do not limit yourself to the given notable keywords, those are just for giving ideas.
+- Categorize based on which category makes the most sense.
+- The given notable keywords are just for giving ideas.
 - You MUST adhere to every guide and isntruction givne before.
 </instructions>
 """

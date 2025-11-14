@@ -139,8 +139,8 @@ class PDFRoutes:
 
           
             if has_delimiter or has_faq_pattern:
-                # docs = parse_chunk_text(text, default_metadata=base_metadata)
-                docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
+                docs = parse_chunk_text(text, default_metadata=base_metadata)
+                # docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
                 all_docs.extend(docs)
             else:
                 processed_chunks = await self.processor.process_text(

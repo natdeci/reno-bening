@@ -1,4 +1,5 @@
 import os
+import ollama
 import base64
 import fitz
 import pdfplumber
@@ -42,24 +43,40 @@ class PDFExtractorHandler:
 
         payload = {
             "model": self.model,
-            "prompt": ExtractPDFPrompts.SYSTEM_PROMPT,
+            # "prompt": ExtractPDFPrompts.SYSTEM_PROMPT,
             "stream": False,
-            "images": [image_b64],
-            "options": {
-                "temperature": 0.0 
-            }
+            # "images": [image_b64],
+            # "options": {
+            #     "temperature": 0.0 
+            # }
+            "messages": [
+                {"role": "system", "content": ExtractPDFPrompts.SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": "Analyze the image.",
+                    "images": [image_b64]
+                }
+            ]
         }
 
         try:
-            async with httpx.AsyncClient(timeout=600) as client:
-                response = await client.post(
-                    f"{self.base_url}api/generate", 
-                    json=payload
-                )
-            # response = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=600)
-                response.raise_for_status()
-                data = response.json()
-                return data.get("response", "").strip()
+            # async with httpx.AsyncClient(timeout=600) as client:
+            #     response = await client.post(
+            #         f"{self.base_url}api/generate", 
+            #         json=payload
+            #     )
+            # # response = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=600)
+            #     response.raise_for_status()
+            #     data = response.json()
+            #     return data.get("response", "").strip()
+            resp = requests.post(
+                f"{self.base_url.rstrip('/')}/api/chat",
+                json=payload,
+                timeout=600
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data["message"]["content"]
         except requests.exceptions.RequestException as e:
             return f"[ERROR calling VLM: {e}]"
 

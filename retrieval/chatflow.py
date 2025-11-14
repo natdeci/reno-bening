@@ -1,5 +1,7 @@
 import uuid, json
 import time
+from datetime import datetime
+import pytz
 from .entity.chat_request import ChatRequest
 from .generate_answer import generate_answer
 from .knowledge_retrieval import retrieve_knowledge
@@ -41,13 +43,26 @@ class ChatflowHandler:
     async def chatflow_call(self, req: ChatRequest):
         print("Entering chatflow_call method")
         ret_conversation_id = req.conversation_id
-        context = ""
+        initial_message = ""
+        context = await self.context(ret_conversation_id)
 
-        if(ret_conversation_id == ""):
-            ret_conversation_id = str(uuid.uuid4())
+        if context == "Conversation History:":
+            if ret_conversation_id == "":
+                ret_conversation_id = str(uuid.uuid4())
             await self.new_conv(ret_conversation_id, req.platform, req.platform_unique_id)
-        else:
-            context = await self.context(ret_conversation_id)
+            tz = pytz.timezone("Asia/Jakarta")
+            now = datetime.now(tz)
+            hour = now.hour
+            if 4 <= hour < 11:
+                initial_message = "Selamat pagi, terima kasih telah menguhubngi layanan bantuan BKPM!\n\n"
+            elif 11 <= hour < 15:
+                initial_message = "Selamat siang, terima kasih telah menguhubngi layanan bantuan BKPM!\n\n"
+            elif 15 <= hour < 18:
+                initial_message = "Selamat sore, terima kasih telah menguhubngi layanan bantuan BKPM!\n\n"
+            else:
+                initial_message = "Selamat malam, terima kasih telah menguhubngi layanan bantuan BKPM!\n\n"
+        # else:
+        #     context = await self.context(ret_conversation_id)
 
         rewritten= await self.rewriter(user_query=req.query, history_context=context)
         embedded_query = await self.converter(rewritten)
@@ -95,19 +110,26 @@ class ChatflowHandler:
             "query": req.query,
             "rewritten_query": rewritten,
             "category": "",
-            "answer": "Percakapan ini akan dialihkan ke agent.",
+            "answer": f"{initial_message}" + "Mohon maaf, untuk sekarang layanan agen helpdesk tidak tersedia.\nmohon kunjungi kantor BKPM terdekat atau email ke layananbkpm@bkpm.co.id",
             "citations": "",
-            "is_helpdesk": True
+            "is_helpdesk": False
         }
 
-        if collection_choice == "skip_collection_check":
+        if collection_choice == "skip_collection_check" or collection_choice == "greeting_query" or collection_choice == "thank_you":
+            basic_return = ""
+            if collection_choice == "skip_collection_check":
+                basic_return = "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan BKPM. Silakan ajukan pertanyaan yang berkaitan dengan investasi, perizinan berusaha, atau layanan OSS agar saya dapat membantu dengan lebih tepat."
+            elif collection_choice == "greeting_query":
+                basic_return = "Halo! Selamat datang di layanan BKPM, apakah ada yang bisa saya bantu?"
+            elif collection_choice == "thank_you":
+                basic_return = "Terima kasih kembali! Silakan chat lagi jika ada yang ingin ditanyakan"
             return {
             "user": req.platform_unique_id,
             "conversation_id": ret_conversation_id,
             "query": req.query,
             "rewritten_query": rewritten,
             "category": "",
-            "answer": "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan BKPM. Silakan ajukan pertanyaan yang berkaitan dengan investasi, perizinan berusaha, atau layanan OSS agar saya dapat membantu dengan lebih tepat.",
+            "answer": basic_return,
             "citations": "",
             "is_helpdesk": False
         }
@@ -140,9 +162,12 @@ class ChatflowHandler:
 
         print("Exiting chatflow_call method")
 
-        if(answer.startswith('[!]') or answer.endswith('Apakah Anda ingin saya hubungkan dengan Agen Layanan?')):
+        if(answer.startswith('[!]') or answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')):
             await self.flag(ret_conversation_id, req.query)
             status = await self.checker(ret_conversation_id)
+            suffix_message = "\n\nUntuk bantuan lebih lanjut, anda bisa kunjungi kantor BKPM terdekat atau email ke kontak@oss.go.id"
+            if answer.startswith('[!]'):
+                suffix_message = "\n\nJawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan."
             if status and answer.startswith('[!]'):
                 return {
                     "user": req.platform_unique_id,
@@ -151,7 +176,7 @@ class ChatflowHandler:
                     "rewritten_query": rewritten,
                     "category": category,
                     "question_category": q_category,
-                    "answer": answer + "\n\nApakah Anda ingin saya hubungkan dengan Agen Layanan?",
+                    "answer": f"{initial_message}" + answer + f"{suffix_message}",
                     "citations": reranked_files,
                     "is_helpdesk": False,
                     "is_answered": None 
@@ -164,7 +189,7 @@ class ChatflowHandler:
             "rewritten_query": rewritten,
             "category": category,
             "question_category": q_category,
-            "answer": answer,
+            "answer": f"{initial_message}" + answer + "\n\nJawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.",
             "citations": reranked_files,
             "is_helpdesk": False,
             "is_answered": None
