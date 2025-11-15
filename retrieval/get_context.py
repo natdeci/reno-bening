@@ -3,7 +3,7 @@ import psycopg
 from dotenv import load_dotenv
 
 load_dotenv()
-limit = 10
+limit = 5
 
 async def get_context(session_id: str):
     print("Getting conversation context...")

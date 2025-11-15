@@ -33,6 +33,7 @@ There will be four main categories in for user's query:
 2. Panduan
    - User question is categorized to this if it is about something relating to step-by-step that the user must do and does not contain anything related to <uraian>.
    - The contents usually involves anything relating to applying business license, a tutorial to configure or register something on a website/portal, tax-related procedure, etc.
+   - Queries regarding OSS or Online Single Submission system of BKPM should be classified as this.
    - The notable keywords are: tata cara, panduan, cara, langkah-langkah, bagaimana cara.
 </panduan>
 
@@ -59,8 +60,8 @@ If the query is classified as "Panduan", output: panduan_collection
 If the query is classified as "Peraturan", output: peraturan_collection
 If the query is classified as "Uraian", output: uraian_collection
 If the query is classified as "Helpdesk", output: helpdesk
-If the user's query is only a greeting, output: greeting_query
-If the user's query is only a thank you, output: thank_you
+If the user's query is only a greeting or test message, output: greeting_query
+If the user's query is only a thank you or an OK confirmation, output: thank_you
 If user's query is not related to anything involving BKPM or the topic sorrounding business or investment, please output: skip_collection_check
 </output>
 

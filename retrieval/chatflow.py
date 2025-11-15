@@ -110,7 +110,7 @@ class ChatflowHandler:
             "query": req.query,
             "rewritten_query": rewritten,
             "category": "",
-            "answer": f"{initial_message}" + "Mohon maaf, untuk sekarang layanan agen helpdesk tidak tersedia.\nmohon kunjungi kantor BKPM terdekat atau email ke layananbkpm@bkpm.co.id",
+            "answer": f"{initial_message}" + "Mohon maaf, untuk sekarang layanan agen helpdesk tidak tersedia.\nmohon kunjungi kantor BKPM terdekat atau email ke kontak@oss.go.id",
             "citations": "",
             "is_helpdesk": False
         }
@@ -122,7 +122,7 @@ class ChatflowHandler:
             elif collection_choice == "greeting_query":
                 basic_return = "Halo! Selamat datang di layanan BKPM, apakah ada yang bisa saya bantu?"
             elif collection_choice == "thank_you":
-                basic_return = "Terima kasih kembali! Silakan chat lagi jika ada yang ingin ditanyakan"
+                basic_return = "Terima kasih! Silakan chat lagi jika ada yang ingin ditanyakan"
             return {
             "user": req.platform_unique_id,
             "conversation_id": ret_conversation_id,
@@ -167,20 +167,19 @@ class ChatflowHandler:
             status = await self.checker(ret_conversation_id)
             suffix_message = "\n\nUntuk bantuan lebih lanjut, anda bisa kunjungi kantor BKPM terdekat atau email ke kontak@oss.go.id"
             if answer.startswith('[!]'):
-                suffix_message = "\n\nJawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan."
-            if status and answer.startswith('[!]'):
-                return {
-                    "user": req.platform_unique_id,
-                    "conversation_id": ret_conversation_id,
-                    "query": req.query,
-                    "rewritten_query": rewritten,
-                    "category": category,
-                    "question_category": q_category,
-                    "answer": f"{initial_message}" + answer + f"{suffix_message}",
-                    "citations": reranked_files,
-                    "is_helpdesk": False,
-                    "is_answered": None 
-                }
+                suffix_message = "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*"
+            return {
+                "user": req.platform_unique_id,
+                "conversation_id": ret_conversation_id,
+                "query": req.query,
+                "rewritten_query": rewritten,
+                "category": category,
+                "question_category": q_category,
+                "answer": f"{initial_message}" + answer + f"{suffix_message}",
+                "citations": [],
+                "is_helpdesk": False,
+                "is_answered": None 
+            }
 
         return {
             "user": req.platform_unique_id,
@@ -189,7 +188,7 @@ class ChatflowHandler:
             "rewritten_query": rewritten,
             "category": category,
             "question_category": q_category,
-            "answer": f"{initial_message}" + answer + "\n\nJawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.",
+            "answer": f"{initial_message}" + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
             "citations": reranked_files,
             "is_helpdesk": False,
             "is_answered": None
