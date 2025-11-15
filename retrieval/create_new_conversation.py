@@ -22,7 +22,8 @@ async def create_new_conversation(session_id:str, platform:str, user_id:str):
     with conn.cursor() as cur:
         cur.execute("""
             INSERT INTO bkpm.conversations (id, start_timestamp, platform, platform_unique_id)
-            VALUES (%s, %s, %s, %s);
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (id) DO NOTHING;
         """, (session_id, new_time, platform, user_id))
         conn.commit()
     conn.close()
