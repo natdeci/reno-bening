@@ -19,6 +19,7 @@ from .retrieve_faq import retrieve_faq
 from .classify_user_query import classify_user_query
 from .ingest_question_category import ingest_question_category
 from .rerank_new import rerank_documents
+from .give_conversation_title import give_conversation_title
 
 class ChatflowHandler:
     def __init__(self):
@@ -34,7 +35,7 @@ class ChatflowHandler:
         self.flag = flag_message
         self.categorize = ingest_category
         self.checker = check_fail_history
-
+        self.givetitle = give_conversation_title
         self.question_classifier = classify_user_query
         self.categorize_question = ingest_question_category
 
@@ -66,6 +67,7 @@ class ChatflowHandler:
 
         rewritten= await self.rewriter(user_query=req.query, history_context=context)
         embedded_query = await self.converter(rewritten)
+        await self.givetitle(session_id=ret_conversation_id, rewritten=rewritten)
 
         # faq_result = await retrieve_faq(embedded_query, threshold=1)
         # if faq_result["matched"]:
