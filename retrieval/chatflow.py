@@ -55,13 +55,13 @@ class ChatflowHandler:
             now = datetime.now(tz)
             hour = now.hour
             if 4 <= hour < 11:
-                initial_message = "Selamat pagi, terima kasih telah menguhubngi layanan bantuan BKPM!\n\n"
+                initial_message = "Selamat pagi, terima kasih telah menghubungi layanan bantuan BKPM!\n\n"
             elif 11 <= hour < 15:
-                initial_message = "Selamat siang, terima kasih telah menguhubngi layanan bantuan BKPM!\n\n"
+                initial_message = "Selamat siang, terima kasih telah menghubungi layanan bantuan BKPM!\n\n"
             elif 15 <= hour < 18:
-                initial_message = "Selamat sore, terima kasih telah menguhubngi layanan bantuan BKPM!\n\n"
+                initial_message = "Selamat sore, terima kasih telah menghubungi layanan bantuan BKPM!\n\n"
             else:
-                initial_message = "Selamat malam, terima kasih telah menguhubngi layanan bantuan BKPM!\n\n"
+                initial_message = "Selamat malam, terima kasih telah menghubungi layanan bantuan BKPM!\n\n"
         # else:
         #     context = await self.context(ret_conversation_id)
 
@@ -120,7 +120,7 @@ class ChatflowHandler:
         if collection_choice == "skip_collection_check" or collection_choice == "greeting_query" or collection_choice == "thank_you":
             basic_return = ""
             if collection_choice == "skip_collection_check":
-                basic_return = "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan BKPM. Silakan ajukan pertanyaan yang berkaitan dengan investasi, perizinan berusaha, atau layanan OSS agar saya dapat membantu dengan lebih tepat."
+                basic_return = "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan kami. Silakan ajukan pertanyaan yang berkaitan dengan investasi, perizinan berusaha, atau layanan OSS agar saya dapat membantu dengan lebih tepat."
             elif collection_choice == "greeting_query":
                 basic_return = "Halo! Selamat datang di layanan BKPM, apakah ada yang bisa saya bantu?"
             elif collection_choice == "thank_you":
