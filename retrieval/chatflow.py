@@ -7,37 +7,21 @@ from .generate_answer import generate_answer
 from .knowledge_retrieval import retrieve_knowledge
 from .query_embedding_converter import convert_to_embedding
 from .rewriter import rewrite_query
-# from .rerank import rerank_documents_with_flag
 from .classify_collection import classify_collection
-from .flag_message import flag_message
-from .ingest_category import ingest_category
-from .get_context import get_context
-from .check_fail_history import check_fail_history
-from .create_new_conversation import create_new_conversation
-from .flag_answered_validation import flag_answered_validation   
-from .retrieve_faq import retrieve_faq
 from .classify_user_query import classify_user_query
-from .ingest_question_category import ingest_question_category
 from .rerank_new import rerank_documents
-from .give_conversation_title import give_conversation_title
+from .repository import ChatflowRepository
 
 class ChatflowHandler:
     def __init__(self):
-        self.new_conv = create_new_conversation
-        self.context = get_context
         self.rewriter = rewrite_query
         self.classifier = classify_collection
         self.converter = convert_to_embedding
         self.retriever = retrieve_knowledge
-        # self.rerank = rerank_documents_with_flag
         self.rerank_new = rerank_documents
         self.llm = generate_answer
-        self.flag = flag_message
-        self.categorize = ingest_category
-        self.checker = check_fail_history
-        self.givetitle = give_conversation_title
         self.question_classifier = classify_user_query
-        self.categorize_question = ingest_question_category
+        self.repository = ChatflowRepository()
 
         print("Chatflow handler initialized")
 
@@ -45,29 +29,30 @@ class ChatflowHandler:
         print("Entering chatflow_call method")
         ret_conversation_id = req.conversation_id
         initial_message = ""
-        context = await self.context(ret_conversation_id)
+        context = await self.repository.get_context(ret_conversation_id)
 
         if context == "Conversation History:":
             if ret_conversation_id == "":
                 ret_conversation_id = str(uuid.uuid4())
-            await self.new_conv(ret_conversation_id, req.platform, req.platform_unique_id)
+            await self.repository.create_new_conversation(ret_conversation_id, req.platform, req.platform_unique_id)
             tz = pytz.timezone("Asia/Jakarta")
             now = datetime.now(tz)
             hour = now.hour
             if 4 <= hour < 11:
-                initial_message = "Selamat pagi, terima kasih telah menghubungi layanan bantuan Kementerian Investasi & Hilirisasi/BKPM!\n\n"
+                greetings_id=1
             elif 11 <= hour < 15:
-                initial_message = "Selamat siang, terima kasih telah menghubungi layanan bantuan Kementerian Investasi & Hilirisasi/BKPM!\n\n"
+                greetings_id=2
             elif 15 <= hour < 18:
-                initial_message = "Selamat sore, terima kasih telah menghubungi layanan bantuan Kementerian Investasi & Hilirisasi/BKPM!\n\n"
+                greetings_id=3
             else:
-                initial_message = "Selamat malam, terima kasih telah menghubungi layanan bantuan Kementerian Investasi & Hilirisasi/BKPM!\n\n"
+                greetings_id=4
+            initial_message = await self.repository.get_greetings(greetings_id)
         # else:
         #     context = await self.context(ret_conversation_id)
 
         rewritten= await self.rewriter(user_query=req.query, history_context=context)
         embedded_query = await self.converter(rewritten)
-        await self.givetitle(session_id=ret_conversation_id, rewritten=rewritten)
+        await self.repository.give_conversation_title(session_id=ret_conversation_id, rewritten=rewritten)
 
         # faq_result = await retrieve_faq(embedded_query, threshold=1)
         # if faq_result["matched"]:
@@ -152,10 +137,10 @@ class ChatflowHandler:
         reranked, reranked_files = await self.rerank_new(rewritten, texts, filenames)
 
         answer = await self.llm(req.query, reranked, ret_conversation_id)
-        category = await self.categorize(ret_conversation_id, req.query, collection_choice)
+        category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
 
         question_classify = await self.question_classifier(rewritten)
-        q_category = await self.categorize_question(
+        q_category = await self.repository.ingest_question_category(
             ret_conversation_id, 
             req.query,
             question_classify.get("category"),
@@ -165,10 +150,10 @@ class ChatflowHandler:
         print("Exiting chatflow_call method")
 
         if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')):
-            await self.flag(ret_conversation_id, req.query)
-            status = await self.checker(ret_conversation_id)
+            await self.repository.flag_message_cannot_answer(ret_conversation_id, req.query)
+            status = await self.repository.check_fail_history(ret_conversation_id)
             if status:
-                suffix_message = "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain.\n\nUntuk bantuan lebih lanjut, anda bisa kunjungi kantor Kementerian Investasi & Hilirisasi/BKPM terdekat atau email ke kontak@oss.go.id"
+                suffix_message = "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain.\n\nUntuk bantuan lebih lanjut, anda bisa kunjungi kantor BKPM terdekat atau email ke kontak@oss.go.id"
                 fail_answer = initial_message + suffix_message
             else:
                 fail_answer = initial_message + answer

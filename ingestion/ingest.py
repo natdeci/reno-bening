@@ -1,4 +1,4 @@
-from langchain.schema import Document
+from langchain_core.documents import Document
 from datetime import datetime, timezone, timedelta
 import re
 
