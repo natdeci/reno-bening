@@ -47,8 +47,6 @@ class ChatflowHandler:
             else:
                 greetings_id=4
             initial_message = await self.repository.get_greetings(greetings_id)
-        # else:
-        #     context = await self.context(ret_conversation_id)
 
         rewritten= await self.rewriter(user_query=req.query, history_context=context)
         embedded_query = await self.converter(rewritten)
@@ -91,16 +89,17 @@ class ChatflowHandler:
         collection_choice = await self.classifier(req.query, context)
 
         if collection_choice == "helpdesk":
+            await self.repository.increment_helpdesk_count(ret_conversation_id)
             return {
-            "user": req.platform_unique_id,
-            "conversation_id": ret_conversation_id,
-            "query": req.query,
-            "rewritten_query": rewritten,
-            "category": "",
-            "answer": f"{initial_message}" + "Mohon maaf, untuk sekarang layanan agen helpdesk tidak tersedia.\nmohon kunjungi kantor Kementerian Investasi & Hilirisasi/BKPM terdekat atau email ke kontak@oss.go.id",
-            "citations": "",
-            "is_helpdesk": False
-        }
+                "user": req.platform_unique_id,
+                "conversation_id": ret_conversation_id,
+                "query": req.query,
+                "rewritten_query": rewritten,
+                "category": "",
+                "answer": f"{initial_message}" + "Mohon maaf, untuk sekarang layanan agen helpdesk tidak tersedia.\nmohon kunjungi kantor Kementerian Investasi & Hilirisasi/BKPM terdekat atau email ke kontak@oss.go.id",
+                "citations": "",
+                "is_helpdesk": False
+            }
 
         if collection_choice == "skip_collection_check" or collection_choice == "greeting_query" or collection_choice == "thank_you":
             basic_return = ""

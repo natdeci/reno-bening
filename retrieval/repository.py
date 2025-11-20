@@ -12,8 +12,8 @@ class ChatflowRepository:
         now = datetime.datetime.now()
 
         query="""
-        INSERT INTO bkpm.conversations (id, start_timestamp, platform, platform_unique_id)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO bkpm.conversations (id, start_timestamp, platform, platform_unique_id, helpdesk_count)
+        VALUES ($1, $2, $3, $4, 0)
         ON CONFLICT (id) DO NOTHING;
         """
 
@@ -61,6 +61,20 @@ class ChatflowRepository:
 
         print("Conversation context retrieved!")
         return history_string.strip()
+    
+    async def increment_helpdesk_count(self, session_id: str):
+        print("Entring increment_helpdesk_count method")
+
+        query = """
+        UPDATE bkpm.conversations
+        SET helpdesk_count = helpdesk_count + 1
+        WHERE id = $1;
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, session_id)
+        print("Exiting increment_helpdesk_count method")
     
     async def flag_message_cannot_answer(self, session_id:str, question: str):
         print("Entering flag_message_cannot_answer method")
