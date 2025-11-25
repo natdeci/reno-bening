@@ -8,13 +8,15 @@ from ingestion.chunking.document_processor import DocumentProcessor
 from ingestion.ingest import parse_chunk_text
 from ingestion.embedding import upsert_documents
 from middleware.auth import verify_api_key
+from .repository import ExtractRepository
 
 class PDFRoutes:
     def __init__(self):
         self.router = APIRouter()
         self.handler = PDFExtractorHandler()
         self.excel_handler = ExcelExtractorHandler()
-        self.processor = DocumentProcessor()  
+        self.processor = DocumentProcessor()
+        self.repository = ExtractRepository()
         self.setup_routes()
         print("PDFExtractor routes initialized")
 
@@ -28,6 +30,7 @@ class PDFRoutes:
             key_checked: str = Depends(verify_api_key)
         ):
             print("Processing...")
+            await self.repository.update_document_status("processing", int(id))
             text = await self.handler.extract_text(file, category)
             
             # proses ingestion
@@ -55,12 +58,13 @@ class PDFRoutes:
             # qdrant
             upsert_documents(all_docs)
 
+            await self.repository.update_document_status("finished", int(id))
+
             return {
                 "data": {
                     "id": id,
                     "category": category,
                     "filename": filename,
-                    # "chunks_count": len(processed_chunks),
                     "chunks_upserted": len(all_docs)
                 }
             }
@@ -123,6 +127,7 @@ class PDFRoutes:
             file: UploadFile = File(...),
             key_checked: str = Depends(verify_api_key)
         ):
+            await self.repository.update_document_status("processing", int(id))
             content = await file.read()
             text = content.decode("utf-8").strip()
 
@@ -165,6 +170,8 @@ class PDFRoutes:
 
             # --- Upsert ke Qdrant ---
             upsert_documents(all_docs)
+
+            await self.repository.update_document_status("finished", int(id))
 
             return {
                 "data": {

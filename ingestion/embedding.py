@@ -4,6 +4,7 @@ from typing import List
 from langchain_community.vectorstores import Qdrant
 from langchain_ollama import OllamaEmbeddings
 from qdrant_client import QdrantClient
+from util.qdrant_connection import vectordb_client
 from langchain_core.documents import Document
 from dotenv import load_dotenv
 
@@ -17,7 +18,7 @@ embedding_model = OllamaEmbeddings(
     model=EMBEDDINGS_MODEL,
     base_url=EMBEDDINGS_BASE_URL
 )
-client = QdrantClient(url=QDRANT_URL)
+client = vectordb_client
 
 
 def get_existing_doc_ids(collection_name: str) -> set:
@@ -39,48 +40,6 @@ def get_existing_doc_ids(collection_name: str) -> set:
         print(f"Ambil existing IDs di '{collection_name}': {e}")
         return set()
 
-# def upsert_documents(
-#     documents: List[Document],
-#     batch_size: int = 64,
-#     sleep_time: float = 0.2
-# ):
-#     collection_name = "bkpm_collection"
-#     print(f"\nCollection Process '{collection_name}' ({len(documents)} docs)")
-
-#     existing_collections = [c.name for c in client.get_collections().collections]
-#     vectorstore = None
-
-#     if collection_name in existing_collections:
-#         print(f"Collection '{collection_name}' sudah ada — akan menambah dokumen baru.")
-#         vectorstore = Qdrant(
-#             client=client,
-#             collection_name=collection_name,
-#             embeddings=embedding_model
-#         )
-#     else:
-#         print(f"Collection '{collection_name}' belum ada — akan dibuat baru.")
-
-#     for i in range(0, len(documents), batch_size):
-#         batch = documents[i:i+batch_size]
-#         print(f"  → Batch Process {i // batch_size + 1} ({len(batch)} docs)...")
-
-#         if vectorstore is None:
-#             vectorstore = Qdrant.from_documents(
-#                 documents=batch,
-#                 embedding=embedding_model,
-#                 url=QDRANT_URL,
-#                 collection_name=collection_name
-#             )
-#         else:
-#             vectorstore.add_documents(batch)
-
-#         time.sleep(sleep_time)
-
-#     print(f"Collection '{collection_name}' upserted {len(documents)} docs")
-
-# ------------------------------------------------------------------
-# ----- KALO DIPISAH COLLECTIONNYA JADI PERKATEGORI ----------------
-# ------------------------------------------------------------------
 def upsert_documents(
     documents: List[Document],
     category_field: str = "category",
@@ -93,25 +52,10 @@ def upsert_documents(
         category = doc.metadata.get(category_field, "umum")
         category_map.setdefault(category, []).append(doc)
 
-    existing_collections = [c.name for c in client.get_collections().collections]
-
     for category, docs in category_map.items():
         collection_name = f"{category.replace(' ', '_').lower()}_collection"
         print(f"\nCollection Process '{collection_name}' ({len(docs)} docs)")
 
-        # if collection_name in existing_collections:
-        #     print(f"Collection '{collection_name}' sudah ada — cek duplikasi...")
-        #     existing_ids = get_existing_doc_ids(collection_name)
-        #     new_docs = [d for d in docs if d.metadata.get("document_id") not in existing_ids]
-        #     if not new_docs:
-        #         print("Tidak ada dokumen baru untuk diinsert.")
-        #         continue
-        #     vectorstore = Qdrant(
-        #         client=client,
-        #         collection_name=collection_name,
-        #         embeddings=embedding_model
-        #     )
-        # else:
         new_docs = docs
         vectorstore = None  
         for i in range(0, len(new_docs), batch_size):
