@@ -198,6 +198,5 @@ class ChatflowRepository:
         async with pool.acquire() as conn:
             await conn.execute(query, category, sub_category, session_id, question)
 
-        print(f"session id {session_id} ; question {question}")
         print(f"Message categorized as {category} and {sub_category} successfuly")
         return category, sub_category

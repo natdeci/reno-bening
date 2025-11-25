@@ -20,7 +20,7 @@ class ChatflowHandler:
     def __init__(self):
         self.qdrant_faq_name = os.getenv("QNA_COLLECTION")
         self.faq_limit = 3
-        self.faq_threshold = 0.6
+        self.faq_threshold = 1.0
 
         self.rewriter = rewrite_query
         self.classifier = classify_collection
@@ -155,14 +155,17 @@ class ChatflowHandler:
             docs = await self.retriever(embedded_query, collection_choice)
 
             texts = []
+            fileids = []
             filenames = []
             for d in docs:
                 if "page_content" in d:
                     texts.append(d["page_content"])
                     meta = d.get("metadata", {})
-                    filenames.append(meta.get("filename") or meta.get("file_id") or "unknown_source")
-            reranked, citations = await self.rerank_new(rewritten, texts, filenames)
+                    fileids.append(meta.get("file_id") or "unknown_source")
+                    filenames.append(meta.get("filename") or "unknown_source")
+            reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
 
+            citations = list(zip(citation_id, citation_name))
             answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform)
 
         question_classify = await self.question_classifier(rewritten)
