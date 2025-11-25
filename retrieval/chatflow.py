@@ -133,6 +133,9 @@ class ChatflowHandler:
                 basic_return = "Halo! Selamat datang di layanan Kementerian Investasi & Hilirisasi/BKPM, apakah ada yang bisa saya bantu?"
             elif collection_choice == "thank_you":
                 basic_return = "Terima kasih! Silakan chat lagi jika ada yang ingin ditanyakan"
+
+            await self.repository.ingest_skipped_question(ret_conversation_id, req.query, "Pertanyaan di luar OSS", "Pertanyaan di luar OSS")
+
             return {
             "user": req.platform_unique_id,
             "conversation_id": ret_conversation_id,

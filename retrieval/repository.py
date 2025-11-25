@@ -77,6 +77,20 @@ class ChatflowRepository:
             await conn.execute(query, session_id)
         print("Exiting increment_helpdesk_count method")
 
+    async def ingest_skipped_question(self, session_id: str, message: str, category: str, sub_category: str):
+        print("Entering ingest_skipped_question method")
+        now = datetime.datetime.now()
+
+        query="""
+        INSERT INTO bkpm.chat_history_outside_oss (session_id, message, question_category, question_sub_category, created_at)
+        VALUES ($1, $2, $3, $4, $5);
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, session_id, message, category, sub_category, now)
+        print("Exiting ingest_skipped_question method")
+
     async def get_revision(self, id: int):
         print("Entring get_revision method")
 
