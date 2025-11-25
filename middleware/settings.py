@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     api_key_secret: str
     rerank_url: str
+    bm25_url: str
 
     class Config:
         env_file = ".env"

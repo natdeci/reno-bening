@@ -1,4 +1,5 @@
 import os
+import asyncio
 import uuid, json
 import time
 from datetime import datetime
@@ -32,34 +33,29 @@ class ChatflowHandler:
         self.repository = ChatflowRepository()
         print("Chatflow handler initialized")
 
-    async def retrieve_faq(self, query_vector: list[float]):
+    async def retrieve_faq(self, query_vector: str):
         print("[INFO] Entering retrieve_faq method")
         limit = self.faq_limit
 
-        results = await vectordb_client.search(
-            collection_name=self.qdrant_faq_name,
-            query_vector=query_vector,
-            limit=limit
-        )
-
+        results = await self.retriever(query_vector, "faq_dummy_collection", top_k=limit)
         if not results:
             print("[INFO] No FAQ results found")
             return {"matched": False, "answer": None, "score": 0.0}
-        print(f"Score: {results[0].score}")
-        if results[0].score < self.faq_threshold:
-            print(f"FAQ confidence is too low! {results[0].score}")
+        if results[0][1] < self.faq_threshold:
+            print(f"FAQ confidence is too low! {results[0][1]}")
             return {"matched": False, "answer": None, "citations": []}
-        
+  
         faq_results = []
         file_ids = []
-        for result in results:
-            score = result.score
-            question_text = result.payload.get("page_content")
-            metadata = result.payload.get("metadata")
+        for d,s in results:
+            score = s
+            print(score)
+            question_text = d.page_content
+            metadata = d.metadata
             file_id = metadata.get("file_id")
             answer = metadata.get("answer", None)
             if answer:
-                print(answer)
+                print("answer from vector:" + answer)
                 if file_id not in file_ids:
                     file_ids.append(file_id)
             elif answer == None:
@@ -107,7 +103,6 @@ class ChatflowHandler:
             initial_message = await self.repository.get_greetings(greetings_id)
 
         rewritten= await self.rewriter(user_query=req.query, history_context=context)
-        embedded_query = await self.converter(rewritten)
         await self.repository.give_conversation_title(session_id=ret_conversation_id, rewritten=rewritten)
 
         collection_choice = await self.classifier(req.query, context)
@@ -146,23 +141,24 @@ class ChatflowHandler:
 
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
 
-        faq_response = await self.retrieve_faq(embedded_query)
+        faq_response = await self.retrieve_faq(rewritten)
         if faq_response["matched"]:
             citations = faq_response["file_ids"]
             answer = await self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform)
             await self.repository.flag_message_is_answered(ret_conversation_id, req.query)
         else:
-            docs = await self.retriever(embedded_query, collection_choice)
+            docs = await self.retriever(rewritten, collection_choice)
 
             texts = []
             filenames = []
-            for d in docs:
-                if "page_content" in d:
-                    texts.append(d["page_content"])
-                    meta = d.get("metadata", {})
-                    filenames.append(meta.get("filename") or meta.get("file_id") or "unknown_source")
+            for d, s in docs:
+                texts.append(d.page_content)
+                filenames.append(d.metadata.get("file_id"))
+            print(texts)
+            print(filenames)
             reranked, citations = await self.rerank_new(rewritten, texts, filenames)
-
+            print(reranked)
+            print(citations)
             answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform)
 
         question_classify = await self.question_classifier(rewritten)
