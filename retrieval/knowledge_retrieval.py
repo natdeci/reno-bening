@@ -72,6 +72,32 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
     def sync_search():
         vectorstore = QdrantVectorStore(
             client=vectordb_client,
+            collection_name="peraturan_dummy_sparse_collection",
+            embedding=embedding_model,         
+            sparse_embedding=sparse_embeddings,  
+            retrieval_mode=RetrievalMode.HYBRID,
+            vector_name="dense",
+            sparse_vector_name="sparse",
+        )
+
+        return vectorstore.similarity_search_with_score(
+            query=user_query,
+            k=top_k,
+        )
+
+    results = await loop.run_in_executor(None, sync_search)
+    print("Exiting retrieve_knowledge method")
+    return results
+
+async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: int = TOP_K):
+    print("Entering retrieve_knowledge_faq method")
+    print(f"Collection: {collection_name}")
+
+    loop = asyncio.get_event_loop()
+
+    def sync_search():
+        vectorstore = QdrantVectorStore(
+            client=vectordb_client,
             collection_name="faq_dummy_collection",
             embedding=embedding_model,         
             sparse_embedding=sparse_embeddings,  
@@ -86,6 +112,7 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
         )
 
     results = await loop.run_in_executor(None, sync_search)
+    print("Exiting retrieve_knowledge_faq method")
     return results
 
 # import os

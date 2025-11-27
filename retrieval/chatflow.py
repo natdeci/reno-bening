@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from util.qdrant_connection import vectordb_client
 from .entity.chat_request import ChatRequest
 from .generate_answer import generate_answer
-from .knowledge_retrieval import retrieve_knowledge
+from .knowledge_retrieval import retrieve_knowledge, retrieve_knowledge_faq
 from .query_embedding_converter import convert_to_embedding
 from .rewriter import rewrite_query
 from .classify_collection import classify_collection
@@ -21,11 +21,12 @@ class ChatflowHandler:
     def __init__(self):
         self.qdrant_faq_name = os.getenv("QNA_COLLECTION")
         self.faq_limit = 3
-        self.faq_threshold = 0.6
+        self.faq_threshold = 1.0
 
         self.rewriter = rewrite_query
         self.classifier = classify_collection
         self.converter = convert_to_embedding
+        self.retriever_faq = retrieve_knowledge_faq
         self.retriever = retrieve_knowledge
         self.rerank_new = rerank_documents
         self.llm = generate_answer
@@ -37,7 +38,7 @@ class ChatflowHandler:
         print("[INFO] Entering retrieve_faq method")
         limit = self.faq_limit
 
-        results = await self.retriever(query_vector, "faq_dummy_collection", top_k=limit)
+        results = await self.retriever_faq(query_vector, "faq_dummy_collection", top_k=limit)
         if not results:
             print("[INFO] No FAQ results found")
             return {"matched": False, "answer": None, "score": 0.0}
@@ -47,17 +48,20 @@ class ChatflowHandler:
   
         faq_results = []
         file_ids = []
+        file_names = []
         for d,s in results:
             score = s
             print(score)
             question_text = d.page_content
             metadata = d.metadata
             file_id = metadata.get("file_id")
+            file_name = metadata.get("filename")
             answer = metadata.get("answer", None)
             if answer:
                 print("answer from vector:" + answer)
                 if file_id not in file_ids:
                     file_ids.append(file_id)
+                    file_names.append(file_name)
             elif answer == None:
                 print("Knowledge is from validation")
                 chat_id = int(file_id.split("-", 1)[1].strip())
@@ -70,15 +74,16 @@ class ChatflowHandler:
             block = f"Q: {question_text}\nA: {answer}"
             formatted.append(block)
 
+        citations = list(zip(file_ids, file_names))
+
         result_string = "\n---\n".join(formatted)
         print("FAQ Matched!")
         return {
             "matched": True,
             "faq_string": result_string,
-            "file_ids": file_ids,
+            "citations": citations,
         }
             
-
     async def chatflow_call(self, req: ChatRequest):
         print("Entering chatflow_call method")
         ret_conversation_id = req.conversation_id
@@ -128,6 +133,9 @@ class ChatflowHandler:
                 basic_return = "Halo! Selamat datang di layanan Kementerian Investasi & Hilirisasi/BKPM, apakah ada yang bisa saya bantu?"
             elif collection_choice == "thank_you":
                 basic_return = "Terima kasih! Silakan chat lagi jika ada yang ingin ditanyakan"
+
+            await self.repository.ingest_skipped_question(ret_conversation_id, req.query, "Pertanyaan di luar OSS", "Pertanyaan di luar OSS")
+
             return {
             "user": req.platform_unique_id,
             "conversation_id": ret_conversation_id,
@@ -139,28 +147,31 @@ class ChatflowHandler:
             "is_helpdesk": False
         }
 
-        category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
-
         faq_response = await self.retrieve_faq(rewritten)
         if faq_response["matched"]:
-            citations = faq_response["file_ids"]
+            citations = faq_response["citations"]
             answer = await self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform)
             await self.repository.flag_message_is_answered(ret_conversation_id, req.query)
         else:
             docs = await self.retriever(rewritten, collection_choice)
 
             texts = []
+            fileids = []
             filenames = []
             for d, s in docs:
                 texts.append(d.page_content)
-                filenames.append(d.metadata.get("file_id"))
-            print(texts)
+                meta = d.metadata
+                fileids.append(meta.get("file_id") or "unknown_source")
+                filenames.append(meta.get("filename") or "unknown_source")
+            print(fileids)
             print(filenames)
-            reranked, citations = await self.rerank_new(rewritten, texts, filenames)
-            print(reranked)
-            print(citations)
+            reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
+            print(citation_id)
+            print(citation_name)
+            citations = list(zip(citation_id, citation_name))
             answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform)
 
+        category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
         question_classify = await self.question_classifier(rewritten)
         q_category = await self.repository.ingest_question_category(
             ret_conversation_id, 
@@ -191,7 +202,7 @@ class ChatflowHandler:
                 "is_helpdesk": False,
                 "is_answered": None 
             }
-
+        await self.repository.ingest_citations(citations, ret_conversation_id, req.query)
         return {
             "user": req.platform_unique_id,
             "conversation_id": ret_conversation_id,
