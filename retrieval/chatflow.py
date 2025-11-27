@@ -7,6 +7,7 @@ import pytz
 from dotenv import load_dotenv
 from util.qdrant_connection import vectordb_client
 from .entity.chat_request import ChatRequest
+from .generate_fallback_question import generate_helpdesk_confirmation_answer
 from .generate_answer import generate_answer
 from .knowledge_retrieval import retrieve_knowledge, retrieve_knowledge_faq
 from .query_embedding_converter import convert_to_embedding
@@ -23,6 +24,7 @@ class ChatflowHandler:
         self.faq_limit = 3
         self.faq_threshold = 1.0
 
+        self.llm_helpdesk = generate_helpdesk_confirmation_answer
         self.rewriter = rewrite_query
         self.classifier = classify_collection
         self.converter = convert_to_embedding
@@ -90,6 +92,23 @@ class ChatflowHandler:
             ask_helpdesk_status = await self.repository.check_is_ask_helpdesk(req.conversation_id)
             if ask_helpdesk_status:
                 print("ask_helpdesk")
+                is_helpdesk_conf = False
+                is_ask_helpdesk_conf = True
+                helpdesk_confirmation_answer =  await self.llm_helpdesk(req.query, req.conversation_id)
+                if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
+                    await self.repository.change_is_ask_helpdesk_status(req.conversation_id)
+                    if helpdesk_confirmation_answer == "Percakapan ini akan dihubungkan ke agen layanan.":
+                        await self.repository.change_is_helpdesk(req.conversation_id)
+                return {
+                    "user": req.platform_unique_id,
+                    "conversation_id": req.conversation_id,
+                    "query": req.query,
+                    "answer": helpdesk_confirmation_answer,
+                    "citations": [],
+                    "is_helpdesk": is_helpdesk_conf,
+                    "is_answered": None,
+                    "is_ask_helpdesk": is_ask_helpdesk_conf
+                }
 
         ret_conversation_id = req.conversation_id
         initial_message = ""
@@ -118,6 +137,7 @@ class ChatflowHandler:
         collection_choice = await self.classifier(req.query, context)
 
         if collection_choice == "helpdesk":
+            await self.repository.change_is_helpdesk(ret_conversation_id)
             await self.repository.increment_helpdesk_count(ret_conversation_id)
             return {
                 "user": req.platform_unique_id,

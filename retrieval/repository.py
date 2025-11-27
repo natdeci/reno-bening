@@ -64,6 +64,20 @@ class ChatflowRepository:
         print("Conversation context retrieved!")
         return history_string.strip()
     
+    async def change_is_helpdesk(self, session_id: str):
+        print("Entering change_is_helpdesk method")
+
+        query = """
+        UPDATE bkpm.conversations
+        SET is_helpdesk = TRUE
+        WHERE id =$1;
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, session_id)
+        print("Exiting change_is_helpdesk method")
+    
     async def increment_helpdesk_count(self, session_id: str):
         print("Entring increment_helpdesk_count method")
 
