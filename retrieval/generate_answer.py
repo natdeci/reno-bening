@@ -42,7 +42,7 @@ The retrieval may include:
    - If the provided retrieval results is irrelevant to those topics, DO NOT answer using general or everyday knowledge (such as cooking, health, or lifestyle topics).
    - Do not answer queries that are about the state of a website service (like an error at a webpage), you are only responsible for the contents and guidelines within it, not the web service.
    - Instead, politely respond in Indonesian:
-     > Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?
+     > {fail_message}
          
 3. Ask for confirmation or detail if user's query is not specific enough
    - After answering, if the retrieval results mentions different rules for subcategories and the user didn't specify theirs, ask for clarification.
@@ -55,7 +55,7 @@ The retrieval may include:
 
 4. Final Fallback:
    - If you truly cannot answer, or the retrieval result deviates too much from what is asked, respond politely in Indonesian:
-     Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?
+     {fail_message}
 </main_instructions>
          
 <output>
@@ -96,7 +96,7 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
 
 chain_with_history = RunnableWithMessageHistory(chain, get_by_session_id, input_messages_key="question", history_messages_key="history",utput_messages_key="answer",)
 
-def get_platform_instructions(platform: str) -> str:
+async def get_platform_instructions(platform: str) -> str:
     platform = platform.lower()
     if platform in ["instagram", "email", "whatsapp"]:
         return (
@@ -116,14 +116,22 @@ def get_platform_instructions(platform: str) -> str:
         "to structure your response cleanly."
     )
 
-async def generate_answer(user_query: str, context_docs: list[str], conversation_id: str, platform: str) -> str:
+async def get_fail_message(status: bool) -> str:
+    if status:
+        return "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain.\n\nUntuk bantuan lebih lanjut, anda bisa kunjungi kantor BKPM terdekat atau email ke kontak@oss.go.id atau kami bisa menghubungkan anda ke helpdesk agen layanan."
+    else:
+        return "Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
+
+async def generate_answer(user_query: str, context_docs: list[str], conversation_id: str, platform: str, status: bool) -> str:
     print("Entering generate_answer method")
     context = "\n\n".join(context_docs)
-    platform_instructions = get_platform_instructions(platform)
+    platform_instructions = await get_platform_instructions(platform)
+    fail_message = await get_fail_message(status)
     result = chain_with_history.invoke(
         {
             "question": user_query,
             "retrieval": context,
+            "fail_message": fail_message,
             "platform_instructions": platform_instructions
         },
         config={"configurable": {"session_id": conversation_id}},

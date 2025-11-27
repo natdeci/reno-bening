@@ -13,8 +13,8 @@ class ChatflowRepository:
         now = datetime.datetime.now()
 
         query="""
-        INSERT INTO bkpm.conversations (id, start_timestamp, platform, platform_unique_id, helpdesk_count)
-        VALUES ($1, $2, $3, $4, 0)
+        INSERT INTO bkpm.conversations (id, start_timestamp, platform, platform_unique_id, helpdesk_count, is_ask_helpdesk)
+        VALUES ($1, $2, $3, $4, 0, false)
         ON CONFLICT (id) DO NOTHING;
         """
 
@@ -186,7 +186,7 @@ class ChatflowRepository:
         WHERE session_id = $1
           AND message -> 'data' ->> 'type' = 'human'
         ORDER BY created_at DESC
-        LIMIT 5;
+        LIMIT 4;
         """
 
         pool = await get_pool()
@@ -195,12 +195,12 @@ class ChatflowRepository:
             rows = await conn.fetch(query, session_id)
 
         boolean_values = [row["is_cannot_answer"] for row in rows]
-        is_all_true = (len(boolean_values) == 5) and all(val is True for val in boolean_values)
+        is_all_true = (len(boolean_values) == 4) and all(val is True for val in boolean_values)
 
         if is_all_true:
-            print("5 consecutive messages are tagged as 'Cannot Answer', redirecting...")
+            print("4 consecutive messages are tagged as 'Cannot Answer', redirecting...")
         else:
-            print("Less than 5 are tagged 'Cannot Answer', continuing conversation...")
+            print("Less than 4 are tagged 'Cannot Answer', continuing conversation...")
 
         return is_all_true
     
@@ -262,3 +262,32 @@ class ChatflowRepository:
         async with pool.acquire() as conn:
             await conn.execute(query, json_str, session_id, question)
         print("Exiting ingest_citations method...")
+
+    async def change_is_ask_helpdesk_status(self, session_id: str):
+        print("Entering change_is_helpdesk_status method...")
+
+        query="""
+        UPDATE bkpm.conversations
+        SET is_ask_helpdesk = NOT is_ask_helpdesk
+        WHERE id = $1;
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, session_id)
+        print("Exiting change_is_helpdesk_status method...")
+
+    async def check_is_ask_helpdesk(self, session_id: str):
+        print("Entering check_is_ask_helpdesk method")
+
+        query="""
+        SELECT is_ask_helpdesk
+        FROM bkpm.conversations
+        WHERE id = $1;
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            is_ask_helpdesk = await conn.fetchval(query, session_id)
+        print("Entering check_is_ask_helpdesk method")
+        return is_ask_helpdesk

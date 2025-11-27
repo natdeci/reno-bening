@@ -86,6 +86,11 @@ class ChatflowHandler:
             
     async def chatflow_call(self, req: ChatRequest):
         print("Entering chatflow_call method")
+        if req.conversation_id != "":
+            ask_helpdesk_status = await self.repository.check_is_ask_helpdesk(req.conversation_id)
+            if ask_helpdesk_status:
+                print("ask_helpdesk")
+
         ret_conversation_id = req.conversation_id
         initial_message = ""
         context = await self.repository.get_context(ret_conversation_id)
@@ -147,10 +152,12 @@ class ChatflowHandler:
             "is_helpdesk": False
         }
 
+        status = await self.repository.check_fail_history(ret_conversation_id)
+
         faq_response = await self.retrieve_faq(rewritten)
         if faq_response["matched"]:
             citations = faq_response["citations"]
-            answer = await self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform)
+            answer = await self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform, status)
             await self.repository.flag_message_is_answered(ret_conversation_id, req.query)
         else:
             docs = await self.retriever(rewritten, collection_choice)
@@ -169,7 +176,7 @@ class ChatflowHandler:
             print(citation_id)
             print(citation_name)
             citations = list(zip(citation_id, citation_name))
-            answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform)
+            answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform, status)
 
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
         question_classify = await self.question_classifier(rewritten)
@@ -182,14 +189,12 @@ class ChatflowHandler:
 
         print("Exiting chatflow_call method")
 
-        if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')):
+        if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')) or (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
             await self.repository.flag_message_cannot_answer(ret_conversation_id, req.query)
-            status = await self.repository.check_fail_history(ret_conversation_id)
-            if status:
-                suffix_message = "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain.\n\nUntuk bantuan lebih lanjut, anda bisa kunjungi kantor BKPM terdekat atau email ke kontak@oss.go.id"
-                fail_answer = initial_message + suffix_message
-            else:
-                fail_answer = initial_message + answer
+            ask_helpdesk = False
+            if (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
+                await self.repository.change_is_ask_helpdesk_status(ret_conversation_id)
+                ask_helpdesk = True
             return {
                 "user": req.platform_unique_id,
                 "conversation_id": ret_conversation_id,
@@ -197,12 +202,15 @@ class ChatflowHandler:
                 "rewritten_query": rewritten,
                 "category": category,
                 "question_category": q_category,
-                "answer": fail_answer,
+                "answer": initial_message + answer,
                 "citations": [],
                 "is_helpdesk": False,
-                "is_answered": None 
+                "is_answered": None,
+                "is_ask_helpdesk": ask_helpdesk
             }
+        
         await self.repository.ingest_citations(citations, ret_conversation_id, req.query)
+
         return {
             "user": req.platform_unique_id,
             "conversation_id": ret_conversation_id,
@@ -210,7 +218,7 @@ class ChatflowHandler:
             "rewritten_query": rewritten,
             "category": category,
             "question_category": q_category,
-            "answer": f"{initial_message}" + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
+            "answer": initial_message + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
             "citations": citations,
             "is_helpdesk": False,
             "is_answered": None
