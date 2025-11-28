@@ -1,5 +1,6 @@
 from util.db_connection import get_pool
 import datetime
+import pytz
 import json
 
 class ChatflowRepository:
@@ -10,7 +11,8 @@ class ChatflowRepository:
     async def create_new_conversation(self, session_id:str, platform:str, user_id:str):
         print(f"Creating new conversation: {session_id}")
 
-        now = datetime.datetime.now()
+        tz = pytz.timezone("Asia/Jakarta")
+        jakarta_now = datetime.datetime.now(tz).replace(tzinfo=None)
 
         query="""
         INSERT INTO bkpm.conversations (id, start_timestamp, platform, platform_unique_id, helpdesk_count, is_ask_helpdesk)
@@ -20,7 +22,7 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, session_id, now, platform, user_id)
+            await conn.execute(query, session_id, jakarta_now, platform, user_id)
         print("conversation created successfully")
 
     async def get_greetings(self, greetings_id: int):
@@ -303,5 +305,74 @@ class ChatflowRepository:
         pool = await get_pool()
         async with pool.acquire() as conn:
             is_ask_helpdesk = await conn.fetchval(query, session_id)
-        print("Entering check_is_ask_helpdesk method")
+        print("Exiting check_is_ask_helpdesk method")
         return is_ask_helpdesk
+    
+    async def ingest_created_at_chat_history(self, session_id: str, question: str):
+        print("Entering ingest_created_at method")
+
+        tz = pytz.timezone("Asia/Jakarta")
+        jakarta_now = datetime.datetime.now(tz).replace(tzinfo=None)
+
+        query="""
+        WITH target AS (
+            SELECT id 
+            FROM bkpm.chat_history
+            WHERE session_id = $2
+            AND message -> 'data' ->> 'content' = $3
+            AND message -> 'data' ->> 'type' = 'human'
+            ORDER BY id DESC
+            LIMIT 1
+        )
+        UPDATE bkpm.chat_history
+        SET created_at = $1
+        WHERE id IN (
+            (SELECT id FROM target),
+            (SELECT id + 1 FROM target)
+        );
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, jakarta_now, session_id, question)
+
+        print("Exiting ingest_created_at method")
+
+    async def get_helpdesk_operation_status(self):
+        print("Entering get_helpdesk_operation_status method")
+
+        query = """
+        SELECT description, time_info FROM operation_time
+        WHERE description IN ('start_time', 'stop_time')
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query)
+
+        op = {row["description"]: row["time_info"] for row in rows}
+        start = op["start_time"]
+        stop = op["stop_time"]
+        jakarta = pytz.timezone("Asia/Jakarta")
+        now_time = datetime.now(jakarta).time()
+
+        print("Exiting get_helpdesk_operation_status method")
+        return start <= now_time <= stop
+    
+    async def ingest_end_timestamp(self, session_id: str):
+        print("Entering ingest_end_timestamp method")
+
+        tz = pytz.timezone("Asia/Jakarta")
+        jakarta_now = datetime.datetime.now(tz).replace(tzinfo=None)
+
+        query = """
+        UPDATE bkpm.conversations
+        SET end_timestamp = $1
+        WHERE id = $2
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, jakarta_now, session_id)
+
+        print("Exiting ingest_end_timestamp method")

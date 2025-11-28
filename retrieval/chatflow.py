@@ -157,7 +157,7 @@ class ChatflowHandler:
             elif collection_choice == "greeting_query":
                 basic_return = "Halo! Selamat datang di layanan Kementerian Investasi & Hilirisasi/BKPM, apakah ada yang bisa saya bantu?"
             elif collection_choice == "thank_you":
-                basic_return = "Terima kasih! Silakan chat lagi jika ada yang ingin ditanyakan"
+                basic_return = "Terima kasih telah menghubungi layanan Kementerian Investasi & Hilirisasi/BKPM!"
 
             await self.repository.ingest_skipped_question(ret_conversation_id, req.query, "Pertanyaan di luar OSS", "Pertanyaan di luar OSS")
 
@@ -169,7 +169,8 @@ class ChatflowHandler:
             "category": "",
             "answer": basic_return,
             "citations": "",
-            "is_helpdesk": False
+            "is_helpdesk": False,
+            "is_faq": False
         }
 
         status = await self.repository.check_fail_history(ret_conversation_id)
@@ -198,6 +199,7 @@ class ChatflowHandler:
             citations = list(zip(citation_id, citation_name))
             answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform, status)
 
+        await self.repository.ingest_created_at_chat_history(ret_conversation_id, req.query)
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
         question_classify = await self.question_classifier(rewritten)
         q_category = await self.repository.ingest_question_category(
