@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from util.qdrant_connection import vectordb_client
 from .entity.chat_request import ChatRequest
 from .generate_fallback_question import generate_helpdesk_confirmation_answer
+from .generate_helpdesk_response import generate_helpdesk_response
 from .generate_answer import generate_answer
 from .knowledge_retrieval import retrieve_knowledge, retrieve_knowledge_faq
 from .query_embedding_converter import convert_to_embedding
@@ -25,6 +26,7 @@ class ChatflowHandler:
         self.faq_threshold = 1.0
 
         self.llm_helpdesk = generate_helpdesk_confirmation_answer
+        self.llm_helpdesk_response = generate_helpdesk_response
         self.rewriter = rewrite_query
         self.classifier = classify_collection
         self.converter = convert_to_embedding
@@ -109,7 +111,8 @@ class ChatflowHandler:
                     "is_answered": None,
                     "is_ask_helpdesk": is_ask_helpdesk_conf
                 }
-
+            
+        start_timestamp = req.start_timestamp
         ret_conversation_id = req.conversation_id
         initial_message = ""
         context = await self.repository.get_context(ret_conversation_id)
@@ -138,13 +141,14 @@ class ChatflowHandler:
 
         if collection_choice == "helpdesk":
             await self.repository.change_is_helpdesk(ret_conversation_id)
+            helpdesk_response = await self.llm_helpdesk_response(req.query, ret_conversation_id)
             return {
                 "user": req.platform_unique_id,
                 "conversation_id": ret_conversation_id,
                 "query": req.query,
                 "rewritten_query": rewritten,
                 "category": "",
-                "answer": f"{initial_message}" + "Percakapan ini akan dialihkan ke helpdesk.",
+                "answer": initial_message + helpdesk_response,
                 "citations": "",
                 "is_helpdesk": True
             }
@@ -197,9 +201,17 @@ class ChatflowHandler:
             print(citation_id)
             print(citation_name)
             citations = list(zip(citation_id, citation_name))
-            answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform, status)
+            unique_names = []
+            for name in citation_name:
+                if name not in unique_names:
+                    unique_names.append(name)
 
-        await self.repository.ingest_created_at_chat_history(ret_conversation_id, req.query)
+            cleaned_names = [n.rsplit(".", 1)[0] for n in unique_names]
+
+            citation_str = ", ".join(cleaned_names)
+            answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform, status, collection_choice, citation_str)
+
+        await self.repository.ingest_start_timestamp(ret_conversation_id, start_timestamp)
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
         question_classify = await self.question_classifier(rewritten)
         q_category = await self.repository.ingest_question_category(

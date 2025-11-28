@@ -16,7 +16,7 @@ model = ChatOllama(
     temperature=0.1,
 )
 table_name = "chat_history"
-human_template = "Retrieval Result:{retrieval}\nUser Query:{question}"
+human_template = "Retrieval Result:{retrieval}\nUser Query:{question}\nCitation Prefix:{citation_prefix}"
 prompt_template = ChatPromptTemplate.from_messages(
     [
         MessagesPlaceholder(variable_name="history"),
@@ -60,6 +60,7 @@ The retrieval may include:
          
 <output>
 - All responses must be in *Bahasa Indonesia*.
+- Start your response with citation_prefix if not empty.
 - Avoid fillers phrases like "Berdasarkan informasi yang saya miliki...".
 - Answer only what is asked by the user and do not add more information.
 - Use markdown syntax for URLs or links in your response.
@@ -122,8 +123,11 @@ async def get_fail_message(status: bool) -> str:
     else:
         return "Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
 
-async def generate_answer(user_query: str, context_docs: list[str], conversation_id: str, platform: str, status: bool) -> str:
+async def generate_answer(user_query: str, context_docs: list[str], conversation_id: str, platform: str, status: bool, collection_choice: str | None = None, citation_str: str | None = None) -> str:
     print("Entering generate_answer method")
+    citation_prefix = ""
+    if collection_choice == "peraturan_collection":
+        citation_prefix = f"Menurut {citation_str},"
     context = "\n\n".join(context_docs)
     platform_instructions = await get_platform_instructions(platform)
     fail_message = await get_fail_message(status)
@@ -132,7 +136,8 @@ async def generate_answer(user_query: str, context_docs: list[str], conversation
             "question": user_query,
             "retrieval": context,
             "fail_message": fail_message,
-            "platform_instructions": platform_instructions
+            "platform_instructions": platform_instructions,
+            "citation_prefix": citation_prefix
         },
         config={"configurable": {"session_id": conversation_id}},
     )

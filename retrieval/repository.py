@@ -11,8 +11,7 @@ class ChatflowRepository:
     async def create_new_conversation(self, session_id:str, platform:str, user_id:str):
         print(f"Creating new conversation: {session_id}")
 
-        tz = pytz.timezone("Asia/Jakarta")
-        jakarta_now = datetime.datetime.now(tz).replace(tzinfo=None)
+        now = datetime.datetime.now()
 
         query="""
         INSERT INTO bkpm.conversations (id, start_timestamp, platform, platform_unique_id, helpdesk_count, is_ask_helpdesk)
@@ -22,7 +21,7 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, session_id, jakarta_now, platform, user_id)
+            await conn.execute(query, session_id, now, platform, user_id)
         print("conversation created successfully")
 
     async def get_greetings(self, greetings_id: int):
@@ -376,3 +375,24 @@ class ChatflowRepository:
             await conn.execute(query, jakarta_now, session_id)
 
         print("Exiting ingest_end_timestamp method")
+
+    async def ingest_start_timestamp(self, session_id: str, start_timestamp: datetime):
+
+        query = """
+        UPDATE bkpm.chat_history
+        SET start_timestamp = $1
+        WHERE id IN (
+            SELECT id
+            FROM bkpm.chat_history
+            WHERE session_id = $2
+            AND start_timestamp IS NULL
+            ORDER BY created_at DESC
+            LIMIT 2
+        );
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, start_timestamp, session_id)
+
+        print("Start timestamp successfully ingested")

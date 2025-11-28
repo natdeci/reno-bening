@@ -57,8 +57,7 @@ There will be four main categories in for user's query:
 <output>
 Output:
 If the query is classified as "Panduan", output: panduan_collection
-If the query is classified as "Peraturan", output: peraturan_collection
-If the query is classified as "Uraian", output: uraian_collection
+If the query is classified as "Peraturan" or "Uraian", output: peraturan_collection
 If the query is classified as "Helpdesk", output: helpdesk
 If the user's query is only a greeting or test message, output: greeting_query
 If the user's query is only a thank you or an OK confirmation, output: thank_you

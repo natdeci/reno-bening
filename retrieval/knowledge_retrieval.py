@@ -72,7 +72,7 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
     def sync_search():
         vectorstore = QdrantVectorStore(
             client=vectordb_client,
-            collection_name="peraturan_dummy_sparse_collection",
+            collection_name=collection_name,
             embedding=embedding_model,         
             sparse_embedding=sparse_embeddings,  
             retrieval_mode=RetrievalMode.HYBRID,
@@ -98,7 +98,7 @@ async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: i
     def sync_search():
         vectorstore = QdrantVectorStore(
             client=vectordb_client,
-            collection_name="faq_dummy_collection",
+            collection_name="qna_collection",
             embedding=embedding_model,         
             sparse_embedding=sparse_embeddings,  
             retrieval_mode=RetrievalMode.HYBRID,
