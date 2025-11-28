@@ -42,7 +42,7 @@ class ChatflowHandler:
         print("[INFO] Entering retrieve_faq method")
         limit = self.faq_limit
 
-        results = await self.retriever_faq(query_vector, "faq_dummy_collection", top_k=limit)
+        results = await self.retriever_faq(query_vector, self.qdrant_faq_name, top_k=limit)
         if not results:
             print("[INFO] No FAQ results found")
             return {"matched": False, "answer": None, "score": 0.0}
