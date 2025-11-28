@@ -138,7 +138,6 @@ class ChatflowHandler:
 
         if collection_choice == "helpdesk":
             await self.repository.change_is_helpdesk(ret_conversation_id)
-            await self.repository.increment_helpdesk_count(ret_conversation_id)
             return {
                 "user": req.platform_unique_id,
                 "conversation_id": ret_conversation_id,
