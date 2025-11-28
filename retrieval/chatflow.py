@@ -145,7 +145,7 @@ class ChatflowHandler:
                 "query": req.query,
                 "rewritten_query": rewritten,
                 "category": "",
-                "answer": f"{initial_message}" + "Mohon konfirmasi apabila anda ingin dihubungkan ke helpdesk",
+                "answer": f"{initial_message}" + "Percakapan ini akan dialihkan ke helpdesk.",
                 "citations": "",
                 "is_helpdesk": True
             }
