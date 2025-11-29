@@ -139,6 +139,9 @@ class ChatflowHandler:
 
         collection_choice = await self.classifier(req.query, context)
 
+        if collection_choice == "uraian_collection":
+            collection_choice = "peraturan_collection"
+                    
         if collection_choice == "helpdesk":
             await self.repository.change_is_helpdesk(ret_conversation_id)
             helpdesk_response = await self.llm_helpdesk_response(req.query, ret_conversation_id)
