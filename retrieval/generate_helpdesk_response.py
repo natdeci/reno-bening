@@ -12,7 +12,7 @@ load_dotenv()
 model = ChatOllama(
     base_url=os.getenv("OLLAMA_BASE_URL"),
     model=os.getenv("LLM_MODEL"),
-    temperature=0.1,
+    temperature=os.getenv("OLLAMA_TEMPERATURE"),
 )
 table_name = "chat_history"
 human_template = "User Query:{question}"

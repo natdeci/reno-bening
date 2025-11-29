@@ -13,7 +13,7 @@ load_dotenv()
 model = ChatOllama(
     base_url=os.getenv("OLLAMA_BASE_URL"),
     model=os.getenv("LLM_MODEL"),
-    temperature=0.1,
+    temperature=os.getenv("OLLAMA_TEMPERATURE"),
 )
 table_name = "chat_history"
 human_template = "Retrieval Result:{retrieval}\nUser Query:{question}\nCitation Prefix:{citation_prefix}"
@@ -63,7 +63,7 @@ The retrieval may include:
 - Start your response with citation_prefix if not empty.
 - Avoid fillers phrases like "Berdasarkan informasi yang saya miliki...".
 - Answer only what is asked by the user and do not add more information.
-- Use markdown syntax for URLs or links in your response.
+- Do not add comma ',' or periods '.' for numbers of KBLI.
 - If the knowledge retrieval is procedural, write clear numbered steps.
 - Provide one final, context-grounded answer following all rules above.
 </output>
