@@ -61,13 +61,12 @@ class ChatflowHandler:
             file_id = metadata.get("file_id")
             file_name = metadata.get("filename")
             answer = metadata.get("answer", None)
-            if answer:
-                print("answer from vector:" + answer)
+            if not file_id.startswith("faq-"):
                 if file_id not in file_ids:
                     file_ids.append(file_id)
                     file_names.append(file_name)
-            elif answer == None:
-                print("Knowledge is from validation")
+            elif file_id.startswith("faq-"):
+                print("Knowledge is from validation" + file_id)
                 chat_id = int(file_id.split("-", 1)[1].strip())
                 answer = await self.repository.get_revision(chat_id)
 
