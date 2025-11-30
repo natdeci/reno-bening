@@ -160,7 +160,8 @@ class PDFRoutes:
                 # --- Upsert ke Qdrant ---
                 upsert_documents(all_docs)
 
-                await self.repository.update_document_status("finished", int(id))
+                if not id.startswith("faq-"):
+                    await self.repository.update_document_status("finished", int(id))
 
                 return {
                     "data": {
@@ -171,7 +172,8 @@ class PDFRoutes:
                     }
                 }
             except Exception as e:
-                await self.repository.update_document_status("failed", int(id))
+                if not id.startswith("faq-"):
+                    await self.repository.update_document_status("failed", int(id))
                 return {
                     "data": {
                         "id": id,
