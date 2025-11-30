@@ -123,7 +123,8 @@ class PDFRoutes:
             file: UploadFile = File(...),
             key_checked: str = Depends(verify_api_key)
         ):
-            await self.repository.update_document_status("processing", int(id))
+            if not id.startswith("faq-"):
+                await self.repository.update_document_status("processing", int(id))
 
             try:
                 content = await file.read()

@@ -62,6 +62,7 @@ If the query is classified as "Helpdesk", output: helpdesk
 If the user's query is only a greeting or test message, output: greeting_query
 If the user's query is only a thank you or an OK confirmation, output: thank_you
 If user's query is not related to anything involving BKPM or the topic sorrounding business or investment, please output: skip_collection_check
+If user's query is related to BKPM but contains checking on something that uses personal/private/classified information and numbers/id, please output: classified_information
 </output>
 
 <instructions>
@@ -72,7 +73,7 @@ Additional instructions:
 - Only output the phrase like instructed and NOTHING ELSE.
 - Categorize based on which category makes the most sense.
 - The given notable keywords are just for giving ideas.
-- You MUST adhere to every guide and isntruction givne before.
+- You MUST adhere to every guide and isntruction given before.
 </instructions>
 """
     user = f"""

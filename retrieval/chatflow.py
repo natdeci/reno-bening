@@ -93,7 +93,7 @@ class ChatflowHandler:
         if req.conversation_id != "":
             ask_helpdesk_status = await self.repository.check_is_ask_helpdesk(req.conversation_id)
             if ask_helpdesk_status:
-                print("ask_helpdesk")
+                print("Ask for moving to helpdesk")
                 is_helpdesk_conf = False
                 is_ask_helpdesk_conf = True
                 helpdesk_confirmation_answer =  await self.llm_helpdesk(req.query, req.conversation_id)
@@ -110,6 +110,19 @@ class ChatflowHandler:
                     "is_helpdesk": is_helpdesk_conf,
                     "is_answered": None,
                     "is_ask_helpdesk": is_ask_helpdesk_conf
+                }
+            helpdesk_status = await self.repository.check_is_helpdesk(req.conversation_id)
+            if helpdesk_status:
+                print("Already moved to helpdesk")
+                return {
+                    "user": req.platform_unique_id,
+                    "conversation_id": req.conversation_id,
+                    "query": req.query,
+                    "answer": "Percakapan telah dipindahkan ke helpdesk.",
+                    "citations": [],
+                    "is_helpdesk": True,
+                    "is_answered": None,
+                    "is_ask_helpdesk": False
                 }
             
         start_timestamp = req.start_timestamp
@@ -151,12 +164,12 @@ class ChatflowHandler:
                 "query": req.query,
                 "rewritten_query": rewritten,
                 "category": "",
-                "answer": initial_message + helpdesk_response,
+                "answer": (initial_message or "") + helpdesk_response,
                 "citations": "",
                 "is_helpdesk": True
             }
 
-        if collection_choice == "skip_collection_check" or collection_choice == "greeting_query" or collection_choice == "thank_you":
+        if collection_choice == "skip_collection_check" or collection_choice == "greeting_query" or collection_choice == "thank_you" or collection_choice == "classified_information":
             basic_return = ""
             if collection_choice == "skip_collection_check":
                 basic_return = "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan kami. Silakan ajukan pertanyaan yang berkaitan dengan investasi, perizinan berusaha, atau layanan OSS agar saya dapat membantu dengan lebih tepat."
@@ -165,6 +178,8 @@ class ChatflowHandler:
             elif collection_choice == "thank_you":
                 await self.repository.ingest_end_timestamp(ret_conversation_id)
                 basic_return = "Terima kasih telah menghubungi layanan Kementerian Investasi & Hilirisasi/BKPM!"
+            elif collection_choice == "classified_information":
+                basic_return = "Mohon maaf, pertanyaan tersebut melibatkan informasi konfidensial/rahasia. Silakan tanyakan pertanyaan lain."
 
             await self.repository.ingest_skipped_question(ret_conversation_id, req.query, "Pertanyaan di luar OSS", "Pertanyaan di luar OSS")
 
@@ -223,7 +238,7 @@ class ChatflowHandler:
             question_classify.get("category"),
             question_classify.get("sub_category")
         )
-
+        question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
         print("Exiting chatflow_call method")
 
         if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')) or (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
@@ -239,7 +254,9 @@ class ChatflowHandler:
                 "rewritten_query": rewritten,
                 "category": category,
                 "question_category": q_category,
-                "answer": initial_message + answer,
+                "answer": (initial_message or "") + answer,
+                "question_id": question_id,
+                "answer_id": answer_id,
                 "citations": [],
                 "is_helpdesk": False,
                 "is_answered": None,
@@ -255,7 +272,9 @@ class ChatflowHandler:
             "rewritten_query": rewritten,
             "category": category,
             "question_category": q_category,
-            "answer": initial_message + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
+            "answer": (initial_message or "") + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
+            "question_id": question_id,
+            "answer_id": answer_id,
             "citations": citations,
             "is_helpdesk": False,
             "is_answered": None

@@ -396,3 +396,42 @@ class ChatflowRepository:
             await conn.execute(query, start_timestamp, session_id)
 
         print("Start timestamp successfully ingested")
+
+    async def get_chat_history_id(self, session_id: str, question: str):
+        print("Entering get_chat_history_id method")
+
+        query="""
+        SELECT id, id + 1 AS answer_id
+        FROM bkpm.chat_history
+        WHERE session_id = $1
+        AND message -> 'data' ->> 'content' = $2
+        AND message -> 'data' ->> 'type' = 'human'
+        ORDER BY id DESC
+        LIMIT 1
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, session_id, question)
+
+        if not rows:
+            return None, None
+        
+        row = rows[0]
+        print("Exiting get_chat_history_id method")
+        return row["id"], row["answer_id"]
+    
+    async def check_is_helpdesk(self, session_id: str):
+        print("Entering check_is_helpdesk method")
+
+        query="""
+        SELECT is_helpdesk
+        FROM bkpm.conversations
+        WHERE id = $1;
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            is_ask_helpdesk = await conn.fetchval(query, session_id)
+        print("Exiting check_is_helpdesk method")
+        return is_ask_helpdesk
