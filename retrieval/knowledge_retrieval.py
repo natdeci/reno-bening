@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import asyncio
 from typing import List, Iterable
 
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_qdrant import QdrantVectorStore, RetrievalMode
 from qdrant_client.models import SparseVector
 from util.qdrant_connection import vectordb_client

@@ -238,7 +238,6 @@ class ChatflowHandler:
         await self.repository.ingest_start_timestamp(ret_conversation_id, start_timestamp)
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
         question_classify = await self.question_classifier(rewritten)
-        print(question_classify)
         q_category = await self.repository.ingest_question_category(
             ret_conversation_id, 
             req.query,

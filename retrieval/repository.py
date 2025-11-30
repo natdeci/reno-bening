@@ -171,7 +171,6 @@ class ChatflowRepository:
             category = "uraian"
         elif col_name == "faq_collection":
             category = "faq"
-        print(category)
         query="""
         UPDATE bkpm.chat_history
         SET category = $1
