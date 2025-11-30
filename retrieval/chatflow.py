@@ -97,6 +97,7 @@ class ChatflowHandler:
                 is_helpdesk_conf = False
                 is_ask_helpdesk_conf = True
                 helpdesk_confirmation_answer =  await self.llm_helpdesk(req.query, req.conversation_id)
+                question_id, answer_id = await self.repository.get_chat_history_id(req.conversation_id, req.query)
                 if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
                     await self.repository.change_is_ask_helpdesk_status(req.conversation_id)
                     if helpdesk_confirmation_answer == "Percakapan ini akan dihubungkan ke agen layanan.":
@@ -106,6 +107,8 @@ class ChatflowHandler:
                     "conversation_id": req.conversation_id,
                     "query": req.query,
                     "answer": helpdesk_confirmation_answer,
+                    "question_id": question_id,
+                    "answer_id": answer_id,
                     "citations": [],
                     "is_helpdesk": is_helpdesk_conf,
                     "is_answered": None,
@@ -158,6 +161,7 @@ class ChatflowHandler:
         if collection_choice == "helpdesk":
             await self.repository.change_is_helpdesk(ret_conversation_id)
             helpdesk_response = await self.llm_helpdesk_response(req.query, ret_conversation_id)
+            question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
             return {
                 "user": req.platform_unique_id,
                 "conversation_id": ret_conversation_id,
@@ -165,6 +169,8 @@ class ChatflowHandler:
                 "rewritten_query": rewritten,
                 "category": "",
                 "answer": (initial_message or "") + helpdesk_response,
+                "question_id": question_id,
+                "answer_id": answer_id,
                 "citations": "",
                 "is_helpdesk": True
             }
@@ -232,6 +238,7 @@ class ChatflowHandler:
         await self.repository.ingest_start_timestamp(ret_conversation_id, start_timestamp)
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
         question_classify = await self.question_classifier(rewritten)
+        print(question_classify)
         q_category = await self.repository.ingest_question_category(
             ret_conversation_id, 
             req.query,
