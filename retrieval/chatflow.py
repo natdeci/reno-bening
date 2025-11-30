@@ -55,7 +55,6 @@ class ChatflowHandler:
         file_names = []
         for d,s in results:
             score = s
-            print(score)
             question_text = d.page_content
             metadata = d.metadata
             file_id = metadata.get("file_id")
@@ -66,10 +65,9 @@ class ChatflowHandler:
                     file_ids.append(file_id)
                     file_names.append(file_name)
             elif file_id.startswith("faq-"):
-                print("Knowledge is from validation" + file_id)
                 chat_id = int(file_id.split("-", 1)[1].strip())
                 answer = await self.repository.get_revision(chat_id)
-
+            print(f"{score}\n{question_text}\n{answer}")
             faq_results.append((score,question_text,answer))
 
         formatted = []
