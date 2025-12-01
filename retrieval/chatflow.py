@@ -103,13 +103,17 @@ class ChatflowHandler:
                     "user": req.platform_unique_id,
                     "conversation_id": req.conversation_id,
                     "query": req.query,
+                    "rewritten_query": None,
+                    "category": None,
+                    "question_category": None,
                     "answer": helpdesk_confirmation_answer,
                     "question_id": question_id,
                     "answer_id": answer_id,
                     "citations": [],
                     "is_helpdesk": is_helpdesk_conf,
-                    "is_answered": None,
-                    "is_ask_helpdesk": is_ask_helpdesk_conf
+                    "is_answered": False,
+                    "is_ask_helpdesk": is_ask_helpdesk_conf,
+                    "is_faq": False
                 }
             helpdesk_status = await self.repository.check_is_helpdesk(req.conversation_id)
             if helpdesk_status:
@@ -118,11 +122,17 @@ class ChatflowHandler:
                     "user": req.platform_unique_id,
                     "conversation_id": req.conversation_id,
                     "query": req.query,
+                    "rewritten_query": None,
+                    "category": None,
+                    "question_category": None,
                     "answer": "Percakapan telah dipindahkan ke helpdesk.",
+                    "question_id": 0,
+                    "answer_id": 0,
                     "citations": [],
                     "is_helpdesk": True,
-                    "is_answered": None,
-                    "is_ask_helpdesk": False
+                    "is_answered": False,
+                    "is_ask_helpdesk": False,
+                    "is_faq": False
                 }
             
         start_timestamp = req.start_timestamp
@@ -165,11 +175,15 @@ class ChatflowHandler:
                 "query": req.query,
                 "rewritten_query": rewritten,
                 "category": "",
+                "question_category": None,
                 "answer": (initial_message or "") + helpdesk_response,
                 "question_id": question_id,
                 "answer_id": answer_id,
                 "citations": "",
-                "is_helpdesk": True
+                "is_helpdesk": True,
+                "is_answered": False,
+                "is_ask_helpdesk": False,
+                "is_faq": False
             }
 
         if collection_choice == "skip_collection_check" or collection_choice == "greeting_query" or collection_choice == "thank_you" or collection_choice == "classified_information":
@@ -192,9 +206,14 @@ class ChatflowHandler:
             "query": req.query,
             "rewritten_query": rewritten,
             "category": "",
+            "question_category": None,
             "answer": basic_return,
+            "question_id": 0,
+            "answer_id": 0,
             "citations": "",
             "is_helpdesk": False,
+            "is_answered": False,
+            "is_ask_helpdesk": False,
             "is_faq": False
         }
 
@@ -262,8 +281,9 @@ class ChatflowHandler:
                 "answer_id": answer_id,
                 "citations": [],
                 "is_helpdesk": False,
-                "is_answered": None,
-                "is_ask_helpdesk": ask_helpdesk
+                "is_answered": False,
+                "is_ask_helpdesk": ask_helpdesk,
+                "is_faq": False
             }
         
         await self.repository.ingest_citations(citations, ret_conversation_id, req.query)
@@ -280,5 +300,7 @@ class ChatflowHandler:
             "answer_id": answer_id,
             "citations": citations,
             "is_helpdesk": False,
-            "is_answered": None
+            "is_answered": False,
+            "is_ask_helpdesk": False,
+            "is_faq": False
         }
