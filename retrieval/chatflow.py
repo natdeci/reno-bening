@@ -113,7 +113,8 @@ class ChatflowHandler:
                     "is_helpdesk": is_helpdesk_conf,
                     "is_answered": False,
                     "is_ask_helpdesk": is_ask_helpdesk_conf,
-                    "is_faq": False
+                    "is_faq": False,
+                    "is_feedback": False
                 }
             helpdesk_status = await self.repository.check_is_helpdesk(req.conversation_id)
             if helpdesk_status:
@@ -132,7 +133,8 @@ class ChatflowHandler:
                     "is_helpdesk": True,
                     "is_answered": False,
                     "is_ask_helpdesk": False,
-                    "is_faq": False
+                    "is_faq": False,
+                    "is_feedback": False
                 }
             
         start_timestamp = req.start_timestamp
@@ -183,7 +185,8 @@ class ChatflowHandler:
                 "is_helpdesk": True,
                 "is_answered": False,
                 "is_ask_helpdesk": False,
-                "is_faq": False
+                "is_faq": False,
+                "is_feedback": False
             }
 
         if collection_choice == "skip_collection_check" or collection_choice == "greeting_query" or collection_choice == "thank_you" or collection_choice == "classified_information":
@@ -214,7 +217,8 @@ class ChatflowHandler:
             "is_helpdesk": False,
             "is_answered": False,
             "is_ask_helpdesk": False,
-            "is_faq": False
+            "is_faq": False,
+            "is_feedback": False
         }
 
         status = await self.repository.check_fail_history(ret_conversation_id)
@@ -283,7 +287,8 @@ class ChatflowHandler:
                 "is_helpdesk": False,
                 "is_answered": False,
                 "is_ask_helpdesk": ask_helpdesk,
-                "is_faq": False
+                "is_faq": False,
+                "is_feedback": True
             }
         
         await self.repository.ingest_citations(citations, ret_conversation_id, req.query)
@@ -302,5 +307,6 @@ class ChatflowHandler:
             "is_helpdesk": False,
             "is_answered": False,
             "is_ask_helpdesk": False,
-            "is_faq": False
+            "is_faq": False,
+            "is_feedback": True
         }

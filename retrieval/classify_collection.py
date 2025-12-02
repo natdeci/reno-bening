@@ -1,14 +1,12 @@
 import os
 from dotenv import load_dotenv
-import requests
-from datetime import datetime, timezone
-import pytz
+from util.async_ollama import ollama_chat_async
 
 load_dotenv()
 
-async def classify_collection(user_query: str, history_context: str) -> str:
-    print("Entering classify_collection method")
-    prompt = """
+model_name = os.getenv("LLM_MODEL")
+model_temperature = os.getenv("OLLAMA_TEMPERATURE")
+prompt = """
 <introduction>
 You are an expert customer service of Badan Koordinasi Penanaman Modal (BKPM), excelling in categorizing a customer's question.
 Your task is to determine what category user's query belongs to, based on a given description about each category.
@@ -76,32 +74,26 @@ Additional instructions:
 - You MUST adhere to every guide and isntruction given before.
 </instructions>
 """
+
+async def classify_collection(user_query: str, history_context: str) -> str:
+    print("Entering classify_collection method")
+
     user = f"""
-<context>
-{history_context}
-</context>
+    <context>
+    {history_context}
+    </context>
+        
+    <query>
+    {user_query}
+    </query>
+    """
+    response = await ollama_chat_async(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": user, "options": {"temperature": model_temperature}}
+        ]
+    )
     
-<query>
-{user_query}
-</query>
-"""
-    payload = {
-        "model": os.getenv('LLM_MODEL'),
-        "messages": [
-            {
-                "role": "system",
-                "content": prompt
-            },
-            {
-                "role": "user",
-                "content": user
-            }
-        ],
-        "stream": False
-        }
-    response = requests.post(f"{os.getenv('OLLAMA_BASE_URL')}api/chat", json=payload)
-    response.raise_for_status()
-    data = response.json()
-    print("Exiting classify_collection method")
-    message = data.get("message", {})
-    return message.get("content", "").strip()
+    print("Exiting classify_detailed_query method")
+    return response["message"]["content"].strip()

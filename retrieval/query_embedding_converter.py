@@ -1,13 +1,12 @@
 import os
 from dotenv import load_dotenv
-from ollama import Client
+from util.async_ollama import async_embed
 
 load_dotenv()
-ollama = Client(host=os.getenv("OLLAMA_BASE_URL"))
 
 async def convert_to_embedding(user_query: str):
     print("Entering convert_to_embedding method")
-    query_vector = ollama.embeddings(model=os.getenv('EMBED_MODEL'), prompt=user_query)
+    query_vector = await async_embed(user_query)
 
     print("Exiting convert_to_embedding method")
     return query_vector["embedding"]

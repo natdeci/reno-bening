@@ -1,57 +1,61 @@
 import os
 import requests
 from dotenv import load_dotenv
+from util.async_ollama import ollama_chat_async
 
 load_dotenv()
+
+model_name = os.getenv("LLM_MODEL")
+model_temperature = os.getenv("OLLAMA_TEMPERATURE")
+prompt = f"""
+<introduction>
+Your role is to act as an expert query rewriter. 
+Your task is to rewrite the given <user_query> into a more concise, complete, and effective query for knowledge retrieval.
+
+You will also receive <context>, which represents previous topic history.
+You MUST first determine whether the <user_query> is still related to the <context>.
+</introduction>
+
+<connection_rules>
+A <user_query> is considered RELATED to the <context> if:
+- They share the same main topic, OR
+- The <user_query> is a continuation, additional detail, clarification, or follow-up to the topic in the <context>, OR
+- The <user_query> cannot be fully understood without information from the <context>.
+
+If NONE of these conditions are met, consider the <user_query> as a new standalone topic.
+</connection_rules>
+
+<instructions>
+- Both input and output will be in English.
+- Your output must contain ONLY the rewritten query, with no explanation or commentary.
+- If the <user_query> IS RELATED to the <context>, you MUST include relevant keywords from the <context> in the rewritten query.
+- If the <user_query> is NOT related, you MUST NOT use the <context> at all.
+- If the <context> is empty, ignore it and use only the <user_query>.
+- The rewritten query must be concise, efficient, and focus only on the essential intent.
+- Do NOT answer the user’s question. ONLY rewrite it.
+</instructions>
+"""
 
 async def rewrite_query(user_query: str, history_context: str) -> str:
     print("Entering rewrite_query method")
 
-    prompt = f"""
-<introduction>
-Your role will be as an expert query rewriter, whose task is to rephrase or remake the given <user_query> into a more concise and effective query for a knowledge retrieval. You will also receive a <context> in case the <user_query> needs more context to be rewritten.
-</introduction>
-
-<instructions>
-- Your input will be in Bahasa Indonesia.
-- Output only the rewritten query and nothing else.
-- The output must be in Bahasa Indonesia.
-- New query must be efficient and contains every important words.
-- If user's query is too short or not detailed enough, use the given <context> to help you rephrase.
-- You may not use the given <context> if the query is clear enough.
-- You may not use the given <context> if it is blank.
-- Do not make the new query an answer to the original query, even if the answer is in the context. Just rewrite the query.
-- You must adhere to every instructions.
-</instructions>
-"""
     user = f"""
-<context>
-{history_context}
-</context>
+    <context>
+    {history_context}
+    </context>
 
-<user_query>
-{user_query}
-</user_query>
-"""
+    <user_query>
+    {user_query}
+    </user_query>
+    """
 
-    payload = {
-        "model": os.getenv('LLM_MODEL'),
-        "messages": [
-            {
-                "role": "system",
-                "content": prompt
-            },
-            {
-                "role": "user",
-                "content": user
-            }
-        ],
-        "stream": False,
-    }
+    response = await ollama_chat_async(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": user, "options": {"temperature": model_temperature}}
+        ]
+    )
 
-    response = requests.post(f"{os.getenv('OLLAMA_BASE_URL')}api/chat", json=payload)
-    response.raise_for_status()
-    data = response.json()
     print("Exiting rewrite_query method")
-    message = data.get("message", {})
-    return message.get("content", "").strip()
+    return response["message"]["content"].strip()
