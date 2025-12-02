@@ -87,6 +87,8 @@ class PDFExtractorHandler:
             if category == "panduan":
                 with pdfplumber.open(file.file) as plumber_doc:
                     for plumber_page in plumber_doc.pages:
+                        print(f"[EXTRACT] Processing page {i+1}/{len(plumber_doc.pages)}")
+                        print(f"[EXTRACT] Page {i+1}: using regular OCR")
                         page_text = plumber_page.extract_text(x_tolerance=0.5)
                         if page_text is None:
                             page_text = ""
@@ -97,15 +99,17 @@ class PDFExtractorHandler:
 
             with fitz.open(stream=content, filetype="pdf") as fitz_doc, \
                  pdfplumber.open(file.file) as plumber_doc: 
-
                 for i in range(len(fitz_doc)):
+                    print(f"[EXTRACT] Processing page {i+1}/{len(fitz_doc)}")
                     fitz_page = fitz_doc.load_page(i)
                     plumber_page = plumber_doc.pages[i]
 
                     if self._analyze_page(fitz_page):
+                        print(f"[EXTRACT] Page {i+1}: using VLM")
                         pix = fitz_page.get_pixmap(dpi=IMAGE_DPI)
                         page_text = await self._call_vlm(pix.tobytes("jpg"))
                     else:
+                        print(f"[EXTRACT] Page {i+1}: using regular OCR")
                         page_text = plumber_page.extract_text(x_tolerance=0.5) or ""
 
                     all_pages.append(page_text.strip())

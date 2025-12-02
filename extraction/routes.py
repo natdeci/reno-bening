@@ -9,6 +9,10 @@ from ingestion.ingest import parse_chunk_text
 from ingestion.embedding import upsert_documents
 from middleware.auth import verify_api_key
 from .repository import ExtractRepository
+import fitz
+import time
+from datetime import datetime
+
 
 class PDFRoutes:
     def __init__(self):
@@ -29,13 +33,30 @@ class PDFRoutes:
             file: UploadFile = File(...),
             key_checked: str = Depends(verify_api_key)
         ):
-            print("Processing...")
+            print("Processing PDF")
             await self.repository.update_document_status("processing", int(id))
+
+            print(f"[INFO] File ID: {id}, Filename: {filename}, Category: {category}")
+            file_bytes = await file.read()
+            pdf_doc = fitz.open(stream=file_bytes, filetype="pdf")
+            total_pages = pdf_doc.page_count
+            pdf_doc.close()
+            print(f"[INFO] Total Pages: {total_pages}")
+
+            file.file.seek(0)
+
+            extract_start = time.time()
+            print(f"[EXTRACT] Start at: {datetime.now()}")
 
             try:
                 text = await self.handler.extract_text(file, category)
+                extract_end = time.time()
+                print(f"[EXTRACT] End at: {datetime.now()}")
+                print(f"[EXTRACT] Extract Total time: {extract_end - extract_start:.2f} sec")
                 
                 # proses ingestion
+                chunking_start = time.time()
+                print(f"[CHUNKING] Start at: {datetime.now()}")
                 processed_chunks = await self.processor.process_text(
                     text,
                     doc_metadata={"file_id": id, "category": category, "filename": filename}
@@ -48,8 +69,18 @@ class PDFRoutes:
                     docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
                     all_docs.extend(docs)
                 
+                chunking_end = time.time()
+                print(f"[CHUNKING] End at: {datetime.now()}")
+                print(f"[CHUNKING] Total time: {chunking_end - chunking_start:.2f} sec")
+
                 # qdrant
+                upsert_start = time.time()
+                print(f"[QDRANT] Upsert start at: {datetime.now()}")
                 upsert_documents(all_docs)
+
+                upsert_end = time.time()
+                print(f"[QDRANT] Upsert end at: {datetime.now()}")
+                print(f"[QDRANT] Total time: {upsert_end - upsert_start:.2f} sec")
 
                 await self.repository.update_document_status("finished", int(id))
 
@@ -123,6 +154,8 @@ class PDFRoutes:
             file: UploadFile = File(...),
             key_checked: str = Depends(verify_api_key)
         ):
+            print("Processing TXT...")
+            print(f"[INFO] File ID: {id}, Filename: {filename}, Category: {category}")
             if not id.startswith("faq-"):
                 await self.repository.update_document_status("processing", int(id))
 
@@ -135,6 +168,9 @@ class PDFRoutes:
                     "category": category,
                     "filename": filename
                 }
+
+                chunking_start = time.time()
+                print(f"[CHUNKING] Start at: {datetime.now()}")
 
                 has_delimiter = "---text---" in text
                 has_faq_pattern = bool(re.search(r"(?mi)^\s*q\s*[:\-]", text))
@@ -157,8 +193,17 @@ class PDFRoutes:
                         docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
                         all_docs.extend(docs)
 
+                chunking_end = time.time()
+                print(f"[CHUNKING] End at: {datetime.now()}")
+                print(f"[CHUNKING] Total chunking time: {chunking_end - chunking_start:.2f} sec")
+
                 # --- Upsert ke Qdrant ---
+                upsert_start = time.time()
+                print(f"[QDRANT] Upsert start at: {datetime.now()}")
                 upsert_documents(all_docs)
+                upsert_end = time.time()
+                print(f"[QDRANT] Upsert end at: {datetime.now()}")
+                print(f"[QDRANT] Total upsert time: {upsert_end - upsert_start:.2f} sec")
 
                 if not id.startswith("faq-"):
                     await self.repository.update_document_status("finished", int(id))
