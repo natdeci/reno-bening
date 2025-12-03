@@ -12,3 +12,9 @@ buat_donlod.py
 dokuprime_chat.zip
 ingest_greetings.py
 chainlit.py
+debug_bm25.py
+debug_vectors.py
+rerank_history.txt
+rerank_history2.txt
+rerank_history3.txt
+rerank_history4.txt

@@ -23,7 +23,7 @@ class ChatflowHandler:
     def __init__(self):
         self.qdrant_faq_name = os.getenv("QNA_COLLECTION")
         self.faq_limit = 3
-        self.faq_threshold = 1.0
+        self.faq_threshold = 0.7
 
         self.llm_helpdesk = generate_helpdesk_confirmation_answer
         self.llm_helpdesk_response = generate_helpdesk_response

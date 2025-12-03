@@ -6,7 +6,7 @@ from util.async_ollama import ollama_chat_async
 load_dotenv()
 
 model_name = os.getenv("LLM_MODEL")
-model_temperature = os.getenv("OLLAMA_TEMPERATURE")
+model_temperature = 0.0
 prompt = f"""
 <introduction>
 Your role is to act as an expert query rewriter. 

@@ -100,10 +100,8 @@ async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: i
             client=vectordb_client,
             collection_name="qna_collection",
             embedding=embedding_model,         
-            sparse_embedding=sparse_embeddings,  
-            retrieval_mode=RetrievalMode.HYBRID,
+            retrieval_mode=RetrievalMode.DENSE,
             vector_name="dense",
-            sparse_vector_name="sparse",
         )
 
         return vectorstore.similarity_search_with_score(
@@ -113,6 +111,7 @@ async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: i
 
     results = await loop.run_in_executor(None, sync_search)
     print("Exiting retrieve_knowledge_faq method")
+    print(results)
     return results
 
 # import os
