@@ -111,7 +111,6 @@ async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: i
 
     results = await loop.run_in_executor(None, sync_search)
     print("Exiting retrieve_knowledge_faq method")
-    print(results)
     return results
 
 # import os

@@ -26,13 +26,14 @@ If NONE of these conditions are met, consider the <user_query> as a new standalo
 </connection_rules>
 
 <instructions>
-- Both input and output will be in English.
+- Both input and output will be in Bahasa Indonesia.
 - Your output must contain ONLY the rewritten query, with no explanation or commentary.
 - If the <user_query> IS RELATED to the <context>, you MUST include relevant keywords from the <context> in the rewritten query.
 - If the <user_query> is NOT related, you MUST NOT use the <context> at all.
 - If the <context> is empty, ignore it and use only the <user_query>.
 - The rewritten query must be concise, efficient, and focus only on the essential intent.
 - Do NOT answer the user’s question. ONLY rewrite it.
+- You MUST output in Bahasa Indonesia
 </instructions>
 """
 

@@ -1,4 +1,5 @@
 import os
+import re
 import asyncio
 import uuid, json
 import time
@@ -10,6 +11,8 @@ from .entity.chat_request import ChatRequest
 from .generate_fallback_question import generate_helpdesk_confirmation_answer
 from .generate_helpdesk_response import generate_helpdesk_response
 from .generate_answer import generate_answer
+from .classify_kbli import classify_kbli
+from .classify_specific import classify_specific
 from .knowledge_retrieval import retrieve_knowledge, retrieve_knowledge_faq
 from .query_embedding_converter import convert_to_embedding
 from .rewriter import rewrite_query
@@ -29,6 +32,8 @@ class ChatflowHandler:
         self.llm_helpdesk_response = generate_helpdesk_response
         self.rewriter = rewrite_query
         self.classifier = classify_collection
+        self.classify_kbli = classify_kbli
+        self.classify_specific = classify_specific
         self.converter = convert_to_embedding
         self.retriever_faq = retrieve_knowledge_faq
         self.retriever = retrieve_knowledge
@@ -239,6 +244,47 @@ class ChatflowHandler:
                 meta = d.metadata
                 fileids.append(meta.get("file_id") or "unknown_source")
                 filenames.append(meta.get("filename") or "unknown_source")
+            
+            kbli_status = await self.classify_kbli(rewritten, context)
+            print("kbli status: " + kbli_status)
+            if collection_choice != "panduan_collection":
+                if kbli_status == "kbli":
+                    specific_status = await self.classify_specific(rewritten, context)
+                    print("specific status: " + specific_status)
+                    if specific_status == "general":
+                        kbli_pattern = re.compile(r"kode kbli:\s*(\d+)", re.IGNORECASE)
+
+                        filtered_texts = []
+                        filtered_fileids = []
+                        filtered_filenames = []
+
+                        seen_kbli = set()
+
+                        for txt, fid, fname in zip(texts, fileids, filenames):
+                            match = kbli_pattern.search(txt)
+                            if not match:
+                                filtered_texts.append(txt)
+                                filtered_fileids.append(fid)
+                                filtered_filenames.append(fname)
+                                continue
+
+                            kbli = match.group(1)
+
+                            if kbli in seen_kbli:
+                                continue
+
+                            seen_kbli.add(kbli)
+                            filtered_texts.append(txt)
+                            filtered_fileids.append(fid)
+                            filtered_filenames.append(fname)
+
+                            for t in filtered_texts:
+                                print("=========\n" + t + "=========\n")
+
+                        texts = filtered_texts
+                        fileids = filtered_fileids
+                        filenames = filtered_filenames
+
             print(fileids)
             print(filenames)
             reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)

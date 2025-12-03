@@ -59,7 +59,7 @@ If the query is classified as "Peraturan" or "Uraian", output: peraturan_collect
 If the query is classified as "Helpdesk", output: helpdesk
 If the user's query is only a greeting or test message, output: greeting_query
 If the user's query is only a thank you or an OK confirmation, output: thank_you
-If user's query is not related to anything involving BKPM or the topic sorrounding business or investment, please output: skip_collection_check
+If user's query is not related to anything involving BKPM or the topic sorrounding business or investment, or is an impolite or socially immorale questions, please output: skip_collection_check
 If user's query is related to BKPM but contains checking on something that uses personal/private/classified information and numbers/id, please output: classified_information
 </output>
 
