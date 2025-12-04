@@ -50,8 +50,9 @@ The retrieval may include:
    - Also check from the chat history whether the current query is a follow up of the previous one or not
    - If it is not clear or specific enough, follow the answer with a request for a more detailed query from the user
      Example:
-         1. ... Bisa tolong tanyakan dengan lebih detail soal (topik) yang mana?
-         2. ... Boleh tolong tanya secara spesifik (topik) tentang apa?
+         1. ... *Bisa tolong tanyakan dengan lebih detail soal (topik) yang mana?*
+         2. ... *Boleh tolong tanya secara spesifik (topik) tentang apa?*
+   - Make sure the answer is in markdown bold
 
 4. Final Fallback:
    - If you truly cannot answer, or the retrieval result deviates too much from what is asked, respond politely in Indonesian:

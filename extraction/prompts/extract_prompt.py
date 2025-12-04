@@ -1,5 +1,5 @@
 class ExtractPDFPrompts:
-    SYSTEM_PROMPT = f"""Tugas kamu adalah menganalisis gambar dan memberikan respons yang sesuai. Gunakan bahasa yang sama dengan bahasa 
+    SYSTEM_PROMPT = """Tugas kamu adalah menganalisis gambar dan memberikan respons yang sesuai. Gunakan bahasa yang sama dengan bahasa 
 yang terdeteksi di dalam dokumen.
 Jangan gunakan kalimat pembuka seperti "Berikut adalah...", "Gambar ini menunjukkan...", atau "Slide ini berisi tentang ...". 
 Sajikan seluruh respons sebagai teks biasa (plain text). Dilarang keras menggunakan format markdown apa pun. JANGAN gunakan simbol 
