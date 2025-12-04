@@ -17,7 +17,6 @@ class PDFRoutes:
     def __init__(self):
         self.router = APIRouter()
         self.handler = PDFExtractorHandler()
-        self.excel_handler = ExcelExtractorHandler()
         self.processor = DocumentProcessor()
         self.repository = ExtractRepository()
         self.setup_routes()
