@@ -26,7 +26,7 @@ class ChatflowHandler:
     def __init__(self):
         self.qdrant_faq_name = os.getenv("QNA_COLLECTION")
         self.faq_limit = 3
-        self.faq_threshold = 0.7
+        self.faq_threshold = 0.75
 
         self.llm_helpdesk = generate_helpdesk_confirmation_answer
         self.llm_helpdesk_response = generate_helpdesk_response
@@ -246,13 +246,14 @@ class ChatflowHandler:
                 filenames.append(meta.get("filename") or "unknown_source")
             
             kbli_status = await self.classify_kbli(rewritten, context)
+            specific_status = ""
             print("kbli status: " + kbli_status)
             if collection_choice != "panduan_collection":
                 if kbli_status == "kbli":
                     specific_status = await self.classify_specific(rewritten, context)
                     print("specific status: " + specific_status)
                     if specific_status == "general":
-                        kbli_pattern = re.compile(r"kode kbli:\s*(\d+)", re.IGNORECASE)
+                        kbli_pattern = re.compile(r"kode[:\s]*kbli[:\s]*([0-9]{1,5})", re.IGNORECASE)
 
                         filtered_texts = []
                         filtered_fileids = []
@@ -278,18 +279,23 @@ class ChatflowHandler:
                             filtered_fileids.append(fid)
                             filtered_filenames.append(fname)
 
-                            for t in filtered_texts:
-                                print("=========\n" + t + "=========\n")
-
+                        print(seen_kbli)
                         texts = filtered_texts
                         fileids = filtered_fileids
                         filenames = filtered_filenames
 
             print(fileids)
             print(filenames)
-            reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
-            print(citation_id)
-            print(citation_name)
+
+            if specific_status == "general":
+                reranked, citation_id, citation_name = texts, fileids, filenames
+            else:
+                reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
+
+            print("===RERANKED===")
+            for r in reranked:
+                print(r)
+            print("==============")
             citations = list(zip(citation_id, citation_name))
             unique_names = []
             for name in citation_name:
