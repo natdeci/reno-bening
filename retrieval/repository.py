@@ -432,5 +432,24 @@ class ChatflowRepository:
         pool = await get_pool()
         async with pool.acquire() as conn:
             is_ask_helpdesk = await conn.fetchval(query, session_id)
+        
         print("Exiting check_is_helpdesk method")
         return is_ask_helpdesk
+
+    async def check_helpdesk_activation(self):
+        print("Entering check_helpdesk_activation method")
+
+        query="""
+        SELECT status
+        FROM bkpm.switch_helpdesk
+        ORDER BY id DESC
+        LIMIT 1;
+        """
+        helpdesk_active_status = False
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            helpdesk_active_status = await conn.fetchval(query)
+
+        print("Exiting check_helpdesk_activation method")
+        return helpdesk_active_status

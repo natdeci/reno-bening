@@ -92,6 +92,7 @@ class ChatflowHandler:
             
     async def chatflow_call(self, req: ChatRequest):
         print("Entering chatflow_call method")
+        helpdesk_active_status = await self.repository.check_helpdesk_activation()
         if req.conversation_id != "":
             ask_helpdesk_status = await self.repository.check_is_ask_helpdesk(req.conversation_id)
             if ask_helpdesk_status:
@@ -173,8 +174,11 @@ class ChatflowHandler:
             collection_choice = "peraturan_collection"
                     
         if collection_choice == "helpdesk":
-            await self.repository.change_is_helpdesk(ret_conversation_id)
-            helpdesk_response = await self.llm_helpdesk_response(req.query, ret_conversation_id)
+            is_helpdesk = False
+            if helpdesk_active_status:
+                await self.repository.change_is_helpdesk(ret_conversation_id)
+                is_helpdesk = True
+            helpdesk_response = await self.llm_helpdesk_response(req.query, ret_conversation_id, helpdesk_active_status)
             question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
             return {
                 "user": req.platform_unique_id,
@@ -187,7 +191,7 @@ class ChatflowHandler:
                 "question_id": question_id,
                 "answer_id": answer_id,
                 "citations": "",
-                "is_helpdesk": True,
+                "is_helpdesk": is_helpdesk,
                 "is_answered": False,
                 "is_ask_helpdesk": False,
                 "is_faq": False,
@@ -231,7 +235,7 @@ class ChatflowHandler:
         faq_response = await self.retrieve_faq(rewritten)
         if faq_response["matched"]:
             citations = faq_response["citations"]
-            answer = await self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform, status)
+            answer = await self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform, status, helpdesk_active_status)
             await self.repository.flag_message_is_answered(ret_conversation_id, req.query)
         else:
             docs = await self.retriever(rewritten, collection_choice)
@@ -289,6 +293,17 @@ class ChatflowHandler:
 
             if specific_status == "general":
                 reranked, citation_id, citation_name = texts, fileids, filenames
+                seen = set()
+                unique_fileids = []
+                unique_filenames = []
+
+                for fid, fname in zip(citation_id, citation_name):
+                    if fid not in seen:
+                        seen.add(fid)
+                        unique_fileids.append(fid)
+                        unique_filenames.append(fname)
+
+                citation_id, citation_name = unique_fileids, unique_filenames
             else:
                 reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
 
@@ -305,7 +320,7 @@ class ChatflowHandler:
             cleaned_names = [n.rsplit(".", 1)[0] for n in unique_names]
 
             citation_str = ", ".join(cleaned_names)
-            answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform, status, collection_choice, citation_str)
+            answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform, status, helpdesk_active_status, collection_choice, citation_str)
 
         await self.repository.ingest_start_timestamp(ret_conversation_id, start_timestamp)
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
@@ -322,7 +337,7 @@ class ChatflowHandler:
         if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')) or (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
             await self.repository.flag_message_cannot_answer(ret_conversation_id, req.query)
             ask_helpdesk = False
-            if (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
+            if (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')) and helpdesk_active_status:
                 await self.repository.change_is_ask_helpdesk_status(ret_conversation_id)
                 ask_helpdesk = True
             return {
