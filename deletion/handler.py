@@ -16,14 +16,7 @@ class ChunkDeletionHandler:
 
     async def delete_points_by_file_id(self, file_id_value: str, category: str):
         try:
-            collection_name = ""
-            if category == "panduan":
-                collection_name = "panduan_collection"
-            elif category == "peraturan":
-                collection_name = "peraturan_collection"
-            elif category == "uraian":
-                collection_name = "uraian_collection"
-            url = f"{os.getenv('QDRANT_URL')}/collections/{"qna_test_collection"}/points/delete"
+            url = f"{os.getenv('QDRANT_URL')}/collections/{category}_collection/points/delete"
             payload = {
                 "filter": {
                     "must": [
