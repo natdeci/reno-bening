@@ -56,7 +56,7 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
 
 chain_with_history = RunnableWithMessageHistory(chain, get_by_session_id, input_messages_key="question", history_messages_key="history",utput_messages_key="answer")
 
-async def generate_helpdesk_confirmation_answer(user_query: str, conversation_id: str) -> str:
+def generate_helpdesk_confirmation_answer(user_query: str, conversation_id: str) -> str:
     print("Entering generate_helpdesk_confirmation_answer method")
     result = chain_with_history.invoke(
         {

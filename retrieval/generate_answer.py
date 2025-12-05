@@ -13,8 +13,25 @@ load_dotenv()
 model = ChatOllama(
     base_url=os.getenv("OLLAMA_BASE_URL"),
     model=os.getenv("LLM_MODEL"),
-    temperature=os.getenv("OLLAMA_TEMPERATURE")
+    temperature=0.1
 )
+
+class LimitedPostgresHistory(PostgresChatMessageHistory):
+    def __init__(self, table_name, session_id, sync_connection, max_messages=6):
+        super().__init__(table_name, session_id, sync_connection=sync_connection)
+        self.max_messages = max_messages
+
+    @property
+    def messages(self):
+        """Return only the last N messages."""
+        all_msgs = super().messages
+        limited = all_msgs[-self.max_messages:]
+        print("=== HISTORY SENT TO LLM ===")
+        for m in limited:
+            print(m.type, ":", m.content)
+        print("===========================")
+        return limited
+
 table_name = "chat_history"
 human_template = "Retrieval Result:{retrieval}\nUser Query:{question}\nCitation Prefix:{citation_prefix}"
 prompt_template = ChatPromptTemplate.from_messages(
@@ -94,11 +111,11 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
     )
 
     sync_connection.autocommit = True
-    return PostgresChatMessageHistory(table_name, session_id, sync_connection=sync_connection)
+    return LimitedPostgresHistory(table_name, session_id, sync_connection, max_messages=6)
 
 chain_with_history = RunnableWithMessageHistory(chain, get_by_session_id, input_messages_key="question", history_messages_key="history",utput_messages_key="answer",)
 
-async def get_platform_instructions(platform: str) -> str:
+def get_platform_instructions(platform: str) -> str:
     platform = platform.lower()
     if platform in ["instagram", "email", "whatsapp"]:
         return (
@@ -111,7 +128,7 @@ async def get_platform_instructions(platform: str) -> str:
         "to structure your response cleanly."
     )
 
-async def get_fail_message(status: bool, helpdesk_active_status: bool) -> str:
+def get_fail_message(status: bool, helpdesk_active_status: bool) -> str:
     if status:
         if helpdesk_active_status:
             return "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain. Untuk bantuan lebih lanjut, apakah anda ingin dihubungkan ke helpdesk agen layanan?"
@@ -120,14 +137,14 @@ async def get_fail_message(status: bool, helpdesk_active_status: bool) -> str:
     else:
         return "Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
 
-async def generate_answer(user_query: str, context_docs: list[str], conversation_id: str, platform: str, status: bool, helpdesk_active_status: bool, collection_choice: str | None = None, citation_str: str | None = None) -> str:
+def generate_answer(user_query: str, context_docs: list[str], conversation_id: str, platform: str, status: bool, helpdesk_active_status: bool, collection_choice: str | None = None, citation_str: str | None = None) -> str:
     print("Entering generate_answer method")
     citation_prefix = ""
     if collection_choice == "peraturan_collection":
         citation_prefix = f"Menurut {citation_str},"
     context = "\n\n".join(context_docs)
-    platform_instructions = await get_platform_instructions(platform)
-    fail_message = await get_fail_message(status, helpdesk_active_status)
+    platform_instructions = get_platform_instructions(platform)
+    fail_message = get_fail_message(status, helpdesk_active_status)
     result = chain_with_history.invoke(
         {
             "question": user_query,

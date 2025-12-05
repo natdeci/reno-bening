@@ -1,5 +1,4 @@
 import os
-import ollama
 import base64
 import fitz
 import pdfplumber
@@ -55,14 +54,14 @@ class PDFExtractorHandler:
         }
 
         try:
-            resp = requests.post(
-                f"{self.base_url.rstrip('/')}/api/chat",
-                json=payload,
-                timeout=600
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["message"]["content"]
+            async with httpx.AsyncClient(timeout=600.0) as client:
+                resp = await client.post(
+                    f"{self.base_url.rstrip('/')}/api/chat",
+                    json=payload
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                return data["message"]["content"]
         except requests.exceptions.RequestException as e:
             return f"[ERROR calling VLM: {e}]"
 

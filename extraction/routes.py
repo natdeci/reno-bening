@@ -20,6 +20,7 @@ class PDFRoutes:
         self.handler = PDFExtractorHandler()
         self.processor = DocumentProcessor()
         self.repository = ExtractRepository()
+        self.timezone = "Asia/Jakarta"
         self.setup_routes()
         print("PDFExtractor routes initialized")
 
@@ -34,7 +35,7 @@ class PDFRoutes:
         ):
             print("Processing PDF")
 
-            extract_start = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+            extract_start = datetime.now(ZoneInfo(self.timezone)).strftime("%Y-%m-%d %H:%M:%S")
             await self.repository.update_document_status("processing", int(id))
 
             try:
@@ -42,7 +43,6 @@ class PDFRoutes:
                 extract_end = time.time()
                 
                 # proses ingestion
-                chunking_start = time.time()
                 processed_chunks = await self.processor.process_text(
                     text,
                     doc_metadata={"file_id": id, "category": category, "filename": filename}
@@ -57,7 +57,7 @@ class PDFRoutes:
 
                 upsert_documents(all_docs)
 
-                extract_end = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+                extract_end = datetime.now(ZoneInfo(self.timezone)).strftime("%Y-%m-%d %H:%M:%S")
 
                 print(f"[INFO] File ID: {id}, Filename: {filename}, Category: {category}, Start time: {extract_start}, End time: {extract_end}")
 
@@ -93,7 +93,7 @@ class PDFRoutes:
             key_checked: str = Depends(verify_api_key)
         ):
             print("Processing TXT...")
-            extract_start = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+            extract_start = datetime.now(ZoneInfo(self.timezone)).strftime("%Y-%m-%d %H:%M:%S")
 
             if not id.startswith("faq-"):
                 await self.repository.update_document_status("processing", int(id))
@@ -131,7 +131,7 @@ class PDFRoutes:
 
                 upsert_documents(all_docs)
 
-                extract_end = datetime.now(ZoneInfo("Asia/Jakarta")).strftime("%Y-%m-%d %H:%M:%S")
+                extract_end = datetime.now(ZoneInfo(self.timezone)).strftime("%Y-%m-%d %H:%M:%S")
 
                 print(f"[INFO] File ID: {id}, Filename: {filename}, Category: {category}, Start time: {extract_start}, End time: {extract_end}")
 

@@ -50,7 +50,7 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
 
 chain_with_history = RunnableWithMessageHistory(chain, get_by_session_id, input_messages_key="question", history_messages_key="history",utput_messages_key="answer")
 
-async def get_helpdesk_response(helpdesk_active_status: bool):
+def get_helpdesk_response(helpdesk_active_status: bool):
     helpdesk_response = ""
     if helpdesk_active_status:
         helpdesk_response = "Percakapan ini akan dihubungkan ke agen layanan."
@@ -59,10 +59,10 @@ async def get_helpdesk_response(helpdesk_active_status: bool):
 
     return helpdesk_response
 
-async def generate_helpdesk_response(user_query: str, conversation_id: str, helpdesk_active_status: bool) -> str:
+def generate_helpdesk_response(user_query: str, conversation_id: str, helpdesk_active_status: bool) -> str:
     print("Entering generate_helpdesk_response method")
-    helpdesk_response = await get_helpdesk_response(helpdesk_active_status)
-    result = chain_with_history.invoke(
+    helpdesk_response = get_helpdesk_response(helpdesk_active_status)
+    result = chain_with_history.ainvoke(
         {
             "question": user_query,
             "helpdesk_response": helpdesk_response

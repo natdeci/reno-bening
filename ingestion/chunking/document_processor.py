@@ -16,23 +16,17 @@ class DocumentProcessor:
         
         if not valid_chunks:
             return []
-        
-        tasks = []
+ 
+        processed = []
         for chunk in valid_chunks:
-            task = self._process_single_chunk(chunk, doc_metadata)
-            tasks.append(task)
+            processed.append(self._process_single_chunk(chunk, doc_metadata))
         
-        processed_chunks = await asyncio.gather(*tasks)
-        
-        return processed_chunks
+        return processed
     
-    async def _process_single_chunk(self, chunk: str, doc_metadata: dict = None):
-        # topic, description = await self.llm_handler.extract_document_info(chunk)
+    def _process_single_chunk(self, chunk: str, doc_metadata: dict = None):
         
         chunk_data = {
             "text": chunk.strip(),
-            # "topic": topic,
-            # "description": description
         }
         
         if doc_metadata:

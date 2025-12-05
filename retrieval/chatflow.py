@@ -99,7 +99,7 @@ class ChatflowHandler:
                 print("Ask for moving to helpdesk")
                 is_helpdesk_conf = False
                 is_ask_helpdesk_conf = True
-                helpdesk_confirmation_answer =  await self.llm_helpdesk(req.query, req.conversation_id)
+                helpdesk_confirmation_answer = self.llm_helpdesk(req.query, req.conversation_id)
                 question_id, answer_id = await self.repository.get_chat_history_id(req.conversation_id, req.query)
                 if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
                     await self.repository.change_is_ask_helpdesk_status(req.conversation_id)
@@ -178,7 +178,7 @@ class ChatflowHandler:
             if helpdesk_active_status:
                 await self.repository.change_is_helpdesk(ret_conversation_id)
                 is_helpdesk = True
-            helpdesk_response = await self.llm_helpdesk_response(req.query, ret_conversation_id, helpdesk_active_status)
+            helpdesk_response = self.llm_helpdesk_response(req.query, ret_conversation_id, helpdesk_active_status)
             question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
             return {
                 "user": req.platform_unique_id,
@@ -235,7 +235,7 @@ class ChatflowHandler:
         faq_response = await self.retrieve_faq(rewritten)
         if faq_response["matched"]:
             citations = faq_response["citations"]
-            answer = await self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform, status, helpdesk_active_status)
+            answer = self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform, status, helpdesk_active_status)
             await self.repository.flag_message_is_answered(ret_conversation_id, req.query)
         else:
             docs = await self.retriever(rewritten, collection_choice)
@@ -257,7 +257,7 @@ class ChatflowHandler:
                     specific_status = await self.classify_specific(rewritten, context)
                     print("specific status: " + specific_status)
                     if specific_status == "general":
-                        kbli_pattern = re.compile(r"kode[:\s]*kbli[:\s]*([0-9]{1,5})", re.IGNORECASE)
+                        kbli_pattern = re.compile(r"kode[:\s]*kbli[:\s]*(\d{1,5})", re.IGNORECASE)
 
                         filtered_texts = []
                         filtered_fileids = []
@@ -291,21 +291,7 @@ class ChatflowHandler:
             print(fileids)
             print(filenames)
 
-            if specific_status == "general":
-                reranked, citation_id, citation_name = texts, fileids, filenames
-                seen = set()
-                unique_fileids = []
-                unique_filenames = []
-
-                for fid, fname in zip(citation_id, citation_name):
-                    if fid not in seen:
-                        seen.add(fid)
-                        unique_fileids.append(fid)
-                        unique_filenames.append(fname)
-
-                citation_id, citation_name = unique_fileids, unique_filenames
-            else:
-                reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
+            reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
 
             print("===RERANKED===")
             for r in reranked:
@@ -320,7 +306,7 @@ class ChatflowHandler:
             cleaned_names = [n.rsplit(".", 1)[0] for n in unique_names]
 
             citation_str = ", ".join(cleaned_names)
-            answer = await self.llm(req.query, reranked, ret_conversation_id, req.platform, status, helpdesk_active_status, collection_choice, citation_str)
+            answer = self.llm(req.query, reranked, ret_conversation_id, req.platform, status, helpdesk_active_status, collection_choice, citation_str)
 
         await self.repository.ingest_start_timestamp(ret_conversation_id, start_timestamp)
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)

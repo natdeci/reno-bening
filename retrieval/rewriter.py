@@ -7,7 +7,7 @@ load_dotenv()
 
 model_name = os.getenv("LLM_MODEL")
 model_temperature = 0.0
-prompt = f"""
+prompt = """
 <introduction>
 Your role is to act as an expert query rewriter. 
 Your task is to rewrite the given <user_query> into a more concise, complete, and effective query for knowledge retrieval.
