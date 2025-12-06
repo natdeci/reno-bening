@@ -20,24 +20,23 @@ def remove_unwanted_lines(text, max_placeholder_words=3):
     
     filtered_lines = []
     for line in lines:
-
-        if re.fullmatch(r'(\s*\.\s*)+', line):
+        if re.fullmatch(r'[.\s]+', line):  
             continue
 
-        if re.fullmatch(r'(\d+\.\s*\w*\s*(\.\s*)+)', line):
+        if re.fullmatch(r'\d+\.\s*(?:\.\s){2,}\.', line):
+            continue
+
+        if re.search(r'(?:\.\s){2,}\.\s*$', line):
             continue
 
         words = line.split()
-        if len(words) <= max_placeholder_words and re.search(r'(\.\s*){2,}$', line):
+        if len(words) <= max_placeholder_words and re.search(r'(?:\.\s){2,}\.\s*$', line):
             continue
 
-        if re.search(r'(\.\s*){2,}$', line):
-            continue
 
         filtered_lines.append(line)
     
     return "\n".join(filtered_lines)
-
 
 
 def recursive_chunking(text, chunk_size=2000, chunk_overlap=300):
@@ -48,58 +47,78 @@ def recursive_chunking(text, chunk_size=2000, chunk_overlap=300):
     )
     return splitter.split_text(text)
 
+def _extract_filename(filename):
+    return os.path.splitext(filename)[0] if filename else None
+
+
+def _handle_no_pasal(text, filename, max_chunk_size):
+    chunks = recursive_chunking(text, chunk_size=max_chunk_size, chunk_overlap=300)
+    return [f"{filename}\n\n{c}" for c in chunks] if filename else chunks
+
+
+def _split_preamble(text, first_pasal_index, filename, max_chunk_size):
+    preamble = text[:first_pasal_index].strip()
+    if not preamble:
+        return []
+
+    chunks = recursive_chunking(preamble, chunk_size=max_chunk_size, chunk_overlap=300)
+    return [f"{filename}\n\n{c}" for c in chunks]
+
+
+def _process_single_pasal(match, next_start, text, filename, max_chunk_size):
+    start = match.start()
+    end = next_start if next_start else len(text)
+
+    pasal_block = text[start:end].strip()
+    header = match.group().strip()
+
+    m = re.match(r'Pasal\s+(\d+[a-z]?)', header, flags=re.IGNORECASE)
+    pasal_number = m.group(1)
+
+    content = pasal_block[len(header):].strip()
+
+    header_tag = f"{filename}\nPasal {pasal_number}\n\n"
+    combined = header_tag + content
+
+    if len(combined) > max_chunk_size:
+        sub_chunks = recursive_chunking(content, chunk_size=max_chunk_size, chunk_overlap=300)
+        return [header_tag + sc for sc in sub_chunks]
+
+    return [combined]
+
+
+def _split_tail(text, end_index, filename, max_chunk_size):
+    tail = text[end_index:].strip()
+    if not tail:
+        return []
+
+    chunks = recursive_chunking(tail, chunk_size=max_chunk_size, chunk_overlap=300)
+    return [f"{filename}\n\n{c}" for c in chunks]
 
 
 def split_by_pasal(text, filename=None, max_chunk_size=2000):
-    if filename:
-        filename = os.path.splitext(filename)[0]
+    filename = _extract_filename(filename)
 
-    pasal_pattern = r'(?m)^\s*Pasal\s+\d+[A-Za-z]?\s*$'
-    pasal_matches = [m for m in re.finditer(pasal_pattern, text)]
+    pasal_pattern = r'(?m)^\s*Pasal\s+\d+[a-z]?\s*$'
+    pasal_matches = list(re.finditer(pasal_pattern, text))
 
     if not pasal_matches:
-        chunks = recursive_chunking(text, chunk_size=max_chunk_size, chunk_overlap=300)
-        if filename:
-            chunks = [f"{filename}\n\n{c}" for c in chunks]
-        return chunks
+        return _handle_no_pasal(text, filename, max_chunk_size)
 
     final_chunks = []
 
-    first_pasal = pasal_matches[0].start()
-    preamble = text[:first_pasal].strip()
-    if preamble:
-        preamble_chunks = recursive_chunking(preamble, chunk_size=max_chunk_size, chunk_overlap=300)
-        for c in preamble_chunks:
-            final_chunks.append(f"{filename}\n\n{c}")
+    final_chunks.extend(
+        _split_preamble(text, pasal_matches[0].start(), filename, max_chunk_size)
+    )
 
     for i, match in enumerate(pasal_matches):
+        next_start = pasal_matches[i + 1].start() if i + 1 < len(pasal_matches) else None
+        final_chunks.extend(
+            _process_single_pasal(match, next_start, text, filename, max_chunk_size)
+        )
 
-        start = match.start()
-        end = pasal_matches[i+1].start() if i + 1 < len(pasal_matches) else len(text)
-
-        pasal_block = text[start:end].strip()
-
-        header_line = match.group().strip()
-        m = re.match(r'Pasal\s+(\d+[A-Za-z]?)', header_line, flags=re.IGNORECASE)
-        pasal_number = m.group(1)
-
-        content = pasal_block[len(header_line):].strip()
-
-        combined = f"{filename}\nPasal {pasal_number}\n\n{content}"
-
-        if len(combined) > max_chunk_size:
-            sub_chunks = recursive_chunking(content, chunk_size=max_chunk_size, chunk_overlap=300)
-            for sc in sub_chunks:
-                final_chunks.append(f"{filename}\nPasal {pasal_number}\n\n{sc}")
-        else:
-            final_chunks.append(combined)
-
-    last_pasal_end = pasal_matches[-1].end()
-    tail = text[last_pasal_end:].strip()
-
-    if tail:
-        tail_chunks = recursive_chunking(tail, chunk_size=max_chunk_size, chunk_overlap=300)
-        for c in tail_chunks:
-            final_chunks.append(f"{filename}\n\n{c}")
+    final_chunks.extend(
+        _split_tail(text, pasal_matches[-1].end(), filename, max_chunk_size)
+    )
 
     return final_chunks
