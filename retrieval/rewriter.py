@@ -16,6 +16,11 @@ You will also receive <context>, which represents previous topic history.
 You MUST first determine whether the <user_query> is still related to the <context>.
 </introduction>
 
+<key_terms>
+KEY TERMS (DO NOT MODIFY THESE TERMS. KEEP EXACT SPELLING):
+OSS, LKPM, NIB, KBLI, PB, PB-UMKU, AHU, RDTR
+</key_terms>
+
 <connection_rules>
 A <user_query> is considered RELATED to the <context> if:
 - They share the same main topic, OR
@@ -32,7 +37,7 @@ If NONE of these conditions are met, consider the <user_query> as a new standalo
 - If the <user_query> is NOT related, you MUST NOT use the <context> at all.
 - If the <context> is empty, ignore it and use only the <user_query>.
 - The rewritten query must be concise, efficient, and focus only on the essential intent.
-- Do NOT answer the user’s question. ONLY rewrite it.
+- Do NOT answer the user's question. ONLY rewrite it.
 - You MUST output in Bahasa Indonesia
 </instructions>
 """
