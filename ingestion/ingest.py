@@ -47,9 +47,7 @@ def parse_faq(main_text, metadata):
     lines = main_text.splitlines()
     docs = []
 
-    current_q = None
-    current_a = []
-    in_answer = False
+    current_q, current_a, in_answer = None, [], False
 
     for line in lines:
         line = line.strip()
@@ -57,17 +55,8 @@ def parse_faq(main_text, metadata):
             continue
 
         if line.startswith("Q:"):
-            if current_q is not None:
-                a_text = "\n".join(current_a).strip()
-                meta = metadata.copy()
-                meta["chunk_index"] = len(docs)
-                if a_text:
-                    meta["answer"] = a_text
-                docs.append(Document(page_content=current_q, metadata=meta))
-
-            current_q = line[2:].strip()
-            current_a = []
-            in_answer = False
+            save_previous_faq(current_q, current_a, docs, metadata)
+            current_q, current_a, in_answer = line[2:].strip(), [], False
             continue
 
         if line.startswith("A:"):
@@ -77,20 +66,23 @@ def parse_faq(main_text, metadata):
 
         if in_answer:
             current_a.append(line)
-            continue
-
-        if current_q is not None:
+        elif current_q is not None:
             current_q += " " + line
 
-    if current_q is not None:
-        a_text = "\n".join(current_a).strip()
-        meta = metadata.copy()
-        meta["chunk_index"] = len(docs)
-        if a_text:
-            meta["answer"] = a_text
-        docs.append(Document(page_content=current_q, metadata=meta))
-
+    save_previous_faq(current_q, current_a, docs, metadata)
     return docs or None
+
+
+def save_previous_faq(current_q, current_a, docs, metadata):
+    if current_q is None:
+        return
+
+    a_text = "\n".join(current_a).strip()
+    meta = metadata.copy()
+    meta["chunk_index"] = len(docs)
+    if a_text:
+        meta["answer"] = a_text
+    docs.append(Document(page_content=current_q, metadata=meta))
 
 
 def parse_chunk_text(chunk_text: str, default_metadata: dict = None):
