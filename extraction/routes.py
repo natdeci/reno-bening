@@ -14,6 +14,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 class PDFRoutes:
+    TZ_JAKARTA = ZoneInfo("Asia/Jakarta") 
     def __init__(self):
         self.router = APIRouter()
         self.handler = PDFExtractorHandler()

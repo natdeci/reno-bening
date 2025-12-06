@@ -21,11 +21,9 @@ def remove_unwanted_lines(text, max_placeholder_words=3):
     filtered_lines = []
     for line in lines:
 
-        # Only dots
         if re.fullmatch(r'(\s*\.\s*)+', line):
             continue
 
-        # "6. Pemerintah . ." pattern
         if re.fullmatch(r'(\d+\.\s*\w*\s*(\.\s*)+)', line):
             continue
 
