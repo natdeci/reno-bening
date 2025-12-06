@@ -5,7 +5,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder 
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import (BaseChatMessageHistory)
-from langchain_postgres import PostgresChatMessageHistory
+from .entity.limited_postgres_history import LimitedPostgresHistory
 
 load_dotenv()
 
@@ -14,19 +14,6 @@ model = ChatOllama(
     model=os.getenv("LLM_MODEL"),
     temperature=os.getenv("OLLAMA_TEMPERATURE"),
 )
-
-class LimitedPostgresHistory(PostgresChatMessageHistory):
-    def __init__(self, table_name, session_id, sync_connection, max_messages=6):
-        super().__init__(table_name, session_id, sync_connection=sync_connection)
-        self.max_messages = max_messages
-
-    @property
-    def messages(self):
-        """Return only the last N messages."""
-        all_msgs = super().messages
-        limited = all_msgs[-self.max_messages:]
-
-        return limited
 
 table_name = "chat_history"
 human_template = "User Query:{question}"

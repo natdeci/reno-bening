@@ -158,6 +158,18 @@ class ChatflowRepository:
             await conn.execute(query, session_id, question)
         print("Exiting flag_message_cannot_answer method")
 
+    async def flag_message_cannot_answer_by_id(self, question_id: int):
+        print("Entering flag_message_cannot_answer_by_id method")
+        query = """
+        UPDATE bkpm.chat_history
+        SET is_cannot_answer = TRUE
+        WHERE id = $1;
+        """
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, question_id)
+        print("Exiting flag_message_cannot_answer_by_id method")
+
     async def ingest_category(self, session_id:str, question: str, col_name: str):
         print("Ingesting data source for user's question")
         print(f"session_id: {session_id}")
@@ -454,3 +466,22 @@ class ChatflowRepository:
 
         print("Exiting check_helpdesk_activation method")
         return helpdesk_active_status
+
+    async def insert_skip_chat(self, session_id: str, human_message: str, ai_message: str):
+        print("Entering insert_skip_chat method")
+
+        human_dict = {"data": {"type": "human", "content": human_message}, "type": "human"}
+        ai_dict = {"data": {"type": "ai", "content": ai_message}, "type": "ai"}
+
+        query="""
+        INSERT INTO bkpm.chat_history (session_id, message)
+        VALUES
+        ($1, $2),
+        ($1, $3);
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, session_id, json.dumps(human_dict), json.dumps(ai_dict))
+
+        print("Exiting insert_skip_chat method")

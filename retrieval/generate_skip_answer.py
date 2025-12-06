@@ -23,7 +23,7 @@ prompt_template = ChatPromptTemplate.from_messages(
         ("system", """
         You are a helpful and expert assistant.
         You will receive user query in Bahasa Indonesia
-        Your task will be to analyze whether the recieved user query is an affirmation or rejection to the question "Apakah anda ingin kami hubungkan ke helpdesk?"
+        Your task will be to response to a user query that 
 
         If the user query indicates affirmation, output:
         Percakapan ini akan dihubungkan ke agen layanan.
@@ -57,13 +57,13 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
 
 chain_with_history = RunnableWithMessageHistory(chain, get_by_session_id, input_messages_key="question", history_messages_key="history",utput_messages_key="answer")
 
-def generate_helpdesk_confirmation_answer(user_query: str, conversation_id: str) -> str:
-    print("Entering generate_helpdesk_confirmation_answer method")
+def generate_skip_answer(user_query: str, conversation_id: str) -> str:
+    print("Entering generate_skip_answer method")
     result = chain_with_history.invoke(
         {
             "question": user_query,
         },
         config={"configurable": {"session_id": conversation_id}},
     )
-    print("Exiting generate_helpdesk_confirmation_answer method")
+    print("Exiting generate_skip_answer method")
     return result.content
