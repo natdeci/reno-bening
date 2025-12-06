@@ -41,7 +41,7 @@ class DocumentProcessor:
         return processed_chunks
     
     async def _process_single_chunk(self, chunk: str, doc_metadata: dict = None):
-
+        await asyncio.sleep(0)
         chunk_data = {
             "text": chunk.strip(),
         }

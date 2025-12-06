@@ -21,11 +21,9 @@ def remove_unwanted_lines(text, max_placeholder_words=3):
     filtered_lines = []
     for line in lines:
 
-        # Only dots
         if re.fullmatch(r'(\s*\.\s*)+', line):
             continue
 
-        # "6. Pemerintah . ." pattern
         if re.fullmatch(r'(\d+\.\s*\w*\s*(\.\s*)+)', line):
             continue
 
@@ -59,7 +57,6 @@ def split_by_pasal(text, filename=None, max_chunk_size=2000):
     pasal_pattern = r'(?m)^\s*Pasal\s+\d+[A-Za-z]?\s*$'
     pasal_matches = [m for m in re.finditer(pasal_pattern, text)]
 
-    # Jika tidak ada pasal sama sekali → recursive full
     if not pasal_matches:
         chunks = recursive_chunking(text, chunk_size=max_chunk_size, chunk_overlap=300)
         if filename:
@@ -67,7 +64,6 @@ def split_by_pasal(text, filename=None, max_chunk_size=2000):
         return chunks
 
     final_chunks = []
-    last_pos = 0
 
     first_pasal = pasal_matches[0].start()
     preamble = text[:first_pasal].strip()
