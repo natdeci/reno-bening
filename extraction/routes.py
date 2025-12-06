@@ -20,6 +20,7 @@ class PDFRoutes:
         self.handler = PDFExtractorHandler()
         self.processor = DocumentProcessor()
         self.repository = ExtractRepository()
+        self.TZ_JAKARTA = ZoneInfo("Asia/Jakarta") 
         self.setup_routes()
         print("PDFExtractor routes initialized")
 
@@ -28,9 +29,9 @@ class PDFRoutes:
         if not doc_id.startswith("faq-"):
             await self.repository.update_document_status(status, int(doc_id))
 
-    async def _process_chunks(self, text: str, base_metadata: dict):
+    def _process_chunks(self, text: str, base_metadata: dict):
         """Handles chunking logic for both PDF + TXT."""
-        processed_chunks = await self.processor.process_text(text, doc_metadata=base_metadata)
+        processed_chunks = self.processor.process_text(text, doc_metadata=base_metadata)
 
         all_docs = []
         for chunk_data in processed_chunks:
@@ -65,7 +66,7 @@ class PDFRoutes:
 
                 # proses ingestion
                 metadata={"file_id": id, "category": category, "filename": filename}
-                processed_chunks = await self._process_chunks(text, metadata)
+                processed_chunks = self._process_chunks(text, metadata)
 
                 upsert_documents(processed_chunks)
 
@@ -124,7 +125,7 @@ class PDFRoutes:
                 if has_delimiter or has_faq_pattern:
                     all_chunks = parse_chunk_text(text, default_metadata=base_metadata)
                 else:
-                    all_chunks = await self._process_chunks(text, base_metadata)
+                    all_chunks = self._process_chunks(text, base_metadata)
 
                 upsert_documents(all_chunks)
 

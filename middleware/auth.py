@@ -4,7 +4,7 @@ import secrets
 
 from .settings import settings
 
-async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")):     
+def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")):     
     received_key = x_api_key.encode('utf-8')
     expected_key = settings.api_key_secret.encode('utf-8')
 

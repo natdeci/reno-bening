@@ -11,7 +11,7 @@ class DocumentProcessor:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-    async def process_text(self, text: str, doc_metadata: dict = None):
+    def process_text(self, text: str, doc_metadata: dict = None):
 
         category = (doc_metadata.get("category") or "").lower()
 
@@ -32,16 +32,14 @@ class DocumentProcessor:
         if not valid_chunks:
             return []
 
-        tasks = []
+        processed = []
         for chunk in valid_chunks:
-            task = self._process_single_chunk(chunk, doc_metadata)
-            tasks.append(task)
-
-        processed_chunks = await asyncio.gather(*tasks)
-        return processed_chunks
+            processed.append(self._process_single_chunk(chunk, doc_metadata))
+        
+        return processed
     
-    async def _process_single_chunk(self, chunk: str, doc_metadata: dict = None):
-        await asyncio.sleep(0)
+    def _process_single_chunk(self, chunk: str, doc_metadata: dict = None):
+
         chunk_data = {
             "text": chunk.strip(),
         }

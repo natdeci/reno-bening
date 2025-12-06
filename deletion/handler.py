@@ -1,11 +1,7 @@
 import os
 import aiohttp
 from dotenv import load_dotenv
-from qdrant_client import QdrantClient, models
-from qdrant_client.models import PointIdsList, Filter, FieldCondition, MatchValue
 from util.qdrant_connection import vectordb_client
-import requests
-import json
 
 load_dotenv()
 
@@ -16,7 +12,14 @@ class ChunkDeletionHandler:
 
     async def delete_points_by_file_id(self, file_id_value: str, category: str):
         try:
-            url = f"{os.getenv('QDRANT_URL')}/collections/{category}_collection/points/delete"
+            collection_name = ""
+            if category == "panduan":
+                collection_name = "panduan_collection"
+            elif category == "peraturan":
+                collection_name = "peraturan_collection"
+            elif category == "uraian":
+                collection_name = "uraian_collection"
+            url = f"{os.getenv('QDRANT_URL')}/collections/{collection_name}/points/delete/"
             payload = {
                 "filter": {
                     "must": [

@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
-import requests
-import json
+import httpx
 import os
 
 load_dotenv()
@@ -17,7 +16,8 @@ async def rerank_documents(query, docs, fileids, filenames, top_k=3):
     }
 
     try:
-        response = requests.post(API_URL, json=payload)
+        async with httpx.AsyncClient(timeout=600) as client:
+            response = await client.post(API_URL, json=payload)
         response.raise_for_status()
 
         response_list = response.json()

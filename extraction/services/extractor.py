@@ -1,5 +1,4 @@
 import os
-import ollama
 import base64
 import fitz
 import pdfplumber

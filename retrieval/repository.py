@@ -6,6 +6,7 @@ import json
 class ChatflowRepository:
     def __init__(self):
         self.history_limit=6
+        self.timezone="Asia/Jakarta"
         print("ChatflowRepository Initiated")
 
     async def create_new_conversation(self, session_id:str, platform:str, user_id:str):
@@ -158,7 +159,7 @@ class ChatflowRepository:
         print("Exiting flag_message_cannot_answer method")
 
     async def ingest_category(self, session_id:str, question: str, col_name: str):
-        print("Ingesting category for user's question")
+        print("Ingesting data source for user's question")
         print(f"session_id: {session_id}")
         print(f"question: {question}")
         print(f"col_name: {col_name}")
@@ -219,7 +220,7 @@ class ChatflowRepository:
         return is_all_true
     
     async def give_conversation_title(self, session_id:str, rewritten:str):
-        print("Ingesting category for user's question")
+        print("Ingesting title for this conversation")
         query = """
             UPDATE bkpm.conversations
             SET context = $1
@@ -309,7 +310,7 @@ class ChatflowRepository:
     async def ingest_created_at_chat_history(self, session_id: str, question: str):
         print("Entering ingest_created_at method")
 
-        tz = pytz.timezone("Asia/Jakarta")
+        tz = pytz.timezone(self.timezone)
         jakarta_now = datetime.datetime.now(tz).replace(tzinfo=None)
 
         query="""
@@ -351,7 +352,7 @@ class ChatflowRepository:
         op = {row["description"]: row["time_info"] for row in rows}
         start = op["start_time"]
         stop = op["stop_time"]
-        jakarta = pytz.timezone("Asia/Jakarta")
+        jakarta = pytz.timezone(self.timezone)
         now_time = datetime.now(jakarta).time()
 
         print("Exiting get_helpdesk_operation_status method")
@@ -360,7 +361,7 @@ class ChatflowRepository:
     async def ingest_end_timestamp(self, session_id: str):
         print("Entering ingest_end_timestamp method")
 
-        tz = pytz.timezone("Asia/Jakarta")
+        tz = pytz.timezone(self.timezone)
         jakarta_now = datetime.datetime.now(tz).replace(tzinfo=None)
 
         query = """
@@ -432,5 +433,24 @@ class ChatflowRepository:
         pool = await get_pool()
         async with pool.acquire() as conn:
             is_ask_helpdesk = await conn.fetchval(query, session_id)
+        
         print("Exiting check_is_helpdesk method")
         return is_ask_helpdesk
+
+    async def check_helpdesk_activation(self):
+        print("Entering check_helpdesk_activation method")
+
+        query="""
+        SELECT status
+        FROM bkpm.switch_helpdesk
+        ORDER BY id DESC
+        LIMIT 1;
+        """
+        helpdesk_active_status = False
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            helpdesk_active_status = await conn.fetchval(query)
+
+        print("Exiting check_helpdesk_activation method")
+        return helpdesk_active_status
