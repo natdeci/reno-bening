@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 import pytz
 from dotenv import load_dotenv
+from typing import Tuple
 from .entity.chat_request import ChatRequest
 from .entity.final_answer import FinalResponse
 from .generate_fallback_question import generate_helpdesk_confirmation_answer
@@ -40,38 +41,14 @@ class ChatflowHandler:
         self.repository = ChatflowRepository()
         print("Chatflow handler initialized")
 
-    async def _build_final_response(self, 
+    def _build_final_response(self, 
         req: ChatRequest, 
-        conversation_id: str = "", 
-        rewritten_query: str = "", 
-        answer: str = "",
-        citations: list = [],
-        category: str = "", 
-        question_category: dict = None,
-        question_id: int = 0, 
-        answer_id: int = 0,
-        is_helpdesk: bool = False,
-        is_answered: bool = False,
-        is_ask_helpdesk: bool = False,
-        is_faq: bool = False,
-        is_feedback: bool = True) -> dict:
+        data: FinalResponse) -> dict:
 
         return {
             "user": req.platform_unique_id,
-            "conversation_id": conversation_id,
             "query": req.query,
-            "rewritten_query": rewritten_query,
-            "category": category,
-            "question_category": question_category, 
-            "answer": answer,
-            "question_id": question_id,
-            "answer_id": answer_id,
-            "citations": citations,
-            "is_helpdesk": is_helpdesk,
-            "is_answered": is_answered,
-            "is_ask_helpdesk": is_ask_helpdesk,
-            "is_faq": is_faq,
-            "is_feedback": is_feedback
+            **data.model_dump()
         }
     
     async def handle_helpdesk_confirmation_answer(self, req: ChatRequest):
@@ -79,7 +56,7 @@ class ChatflowHandler:
         is_helpdesk_conf = False
         is_ask_helpdesk_conf = True
         helpdesk_confirmation_answer = self.llm_helpdesk(req.query, req.conversation_id)
-        question_id, answer_id = await self.repository.get_chat_history_id(req.conversation_id, req.query)
+        question_id, _ = await self.repository.get_chat_history_id(req.conversation_id, req.query)
         if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
             await self.repository.change_is_ask_helpdesk_status(req.conversation_id)
             is_ask_helpdesk_conf = False
@@ -87,14 +64,13 @@ class ChatflowHandler:
                 await self.repository.change_is_helpdesk(req.conversation_id)
                 is_helpdesk_conf = True
         print("Exiting handle_helpdesk_confirmation_answer method")
-        return await self._build_final_response(
-            req=req,
+        return FinalResponse(
             conversation_id=req.conversation_id,
             answer=helpdesk_confirmation_answer,
             question_id=question_id,
-            answer_id=answer_id,
             is_helpdesk=is_helpdesk_conf,
-            is_ask_helpdesk=is_ask_helpdesk_conf)
+            is_ask_helpdesk=is_ask_helpdesk_conf
+        )
     
     async def get_greetings_message(self):
         print("Entering get_greetings_message method")
@@ -124,14 +100,17 @@ class ChatflowHandler:
         question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
 
         print("Exiting handle_helpdesk_response method")
-        return await self._build_final_response(
-            req=req,
+        return_data = FinalResponse(
             conversation_id=ret_conversation_id,
             rewritten_query=rewritten,
             answer=(initial_message or "") + helpdesk_response,
             question_id=question_id,
             answer_id=answer_id,
-            is_helpdesk=is_helpdesk)
+            is_helpdesk=is_helpdesk
+        )
+        return self._build_final_response(
+            req=req,
+            data=return_data)
     
     async def handle_skip_collection_answer(self, req: ChatRequest, ret_conversation_id: str, rewritten: str, message: str, is_ask_helpdesk: bool):
         print("Entering handle_skip_collection_answer method")
@@ -141,14 +120,17 @@ class ChatflowHandler:
         await self.repository.flag_message_cannot_answer_by_id(question_id)
 
         print("Exiting handle_skip_collection_answer method")
-        return await self._build_final_response(
-            req=req,
+        return_data = FinalResponse(
             conversation_id=ret_conversation_id,
             rewritten_query=rewritten,
             answer=message,
             question_id=question_id,
             answer_id=answer_id,
-            is_ask_helpdesk=is_ask_helpdesk)
+            is_ask_helpdesk=is_ask_helpdesk
+        )
+        return self._build_final_response(
+            req=req,
+            data=return_data)
     
     async def handle_default_answering(self, req: ChatRequest, ret_conversation_id: str, rewritten: str, collection_choice: str):
         print("Entering handle_default_answering method")
@@ -179,12 +161,15 @@ class ChatflowHandler:
         await self.repository.ingest_skipped_question(ret_conversation_id, req.query, "Pertanyaan di luar OSS", "Pertanyaan di luar OSS")
         
         print("Exiting handle_default_answering method")
-        return await self._build_final_response(
-            req=req,
+        return_data = FinalResponse(
             conversation_id=ret_conversation_id,
             rewritten_query=rewritten,
             answer=basic_return,
-            is_feedback=False)
+            is_feedback=False
+        )
+        return self._build_final_response(
+            req=req,
+            data=return_data)
 
     async def retrieve_faq(self, query_vector: str):
         print("[INFO] Entering retrieve_faq method")
@@ -232,6 +217,47 @@ class ChatflowHandler:
             "citations": citations,
         }
     
+    async def get_filtered_chunks(self, rewritten: str, context: str, texts: list[str], fileids: list[str], filenames: list[str]):
+        print("Entering get_filtered_chunks method")
+        kbli_status = await self.classify_kbli(rewritten, context)
+        print("kbli status: " + kbli_status)
+        if kbli_status == "kbli":
+            specific_status = await self.classify_specific(rewritten, context)
+            print("specific status: " + specific_status)
+            if specific_status == "general":
+                kbli_pattern = re.compile(r"kode[:\s]*kbli[:\s]*(\d{1,5})", re.IGNORECASE)
+
+                filtered_texts = []
+                filtered_fileids = []
+                filtered_filenames = []
+
+                seen_kbli = set()
+
+                for txt, fid, fname in zip(texts, fileids, filenames):
+                    match = kbli_pattern.search(txt)
+                    if not match:
+                        filtered_texts.append(txt)
+                        filtered_fileids.append(fid)
+                        filtered_filenames.append(fname)
+                        continue
+
+                    kbli = match.group(1)
+
+                    if kbli in seen_kbli:
+                        continue
+
+                    seen_kbli.add(kbli)
+                    filtered_texts.append(txt)
+                    filtered_fileids.append(fid)
+                    filtered_filenames.append(fname)
+
+                print(f"KBLIs: {seen_kbli}")
+                print("Exiting get_filtered_chunks method with no removal")
+                return filtered_texts, filtered_fileids, filtered_filenames
+
+        print("Exiting get_filtered_chunks method with no removal")
+        return texts, fileids, filenames
+    
     async def handle_full_retrieval(self, req:ChatRequest, ret_conversation_id: str, status: bool, helpdesk_active_status: bool, context: str, rewritten: str, collection_choice: str):
         print("Entering handle_full_retrieval method")
 
@@ -246,49 +272,10 @@ class ChatflowHandler:
             fileids.append(meta.get("file_id") or "unknown_source")
             filenames.append(meta.get("filename") or "unknown_source")
 
-        kbli_status = ""
-        specific_status = ""
-        if collection_choice != "panduan_collection":
-            kbli_status = await self.classify_kbli(rewritten, context)
-            print("kbli status: " + kbli_status)
-            if kbli_status == "kbli":
-                specific_status = await self.classify_specific(rewritten, context)
-                print("specific status: " + specific_status)
-                if specific_status == "general":
-                    kbli_pattern = re.compile(r"kode[:\s]*kbli[:\s]*(\d{1,5})", re.IGNORECASE)
-
-                    filtered_texts = []
-                    filtered_fileids = []
-                    filtered_filenames = []
-
-                    seen_kbli = set()
-
-                    for txt, fid, fname in zip(texts, fileids, filenames):
-                        match = kbli_pattern.search(txt)
-                        if not match:
-                            filtered_texts.append(txt)
-                            filtered_fileids.append(fid)
-                            filtered_filenames.append(fname)
-                            continue
-
-                        kbli = match.group(1)
-
-                        if kbli in seen_kbli:
-                            continue
-
-                        seen_kbli.add(kbli)
-                        filtered_texts.append(txt)
-                        filtered_fileids.append(fid)
-                        filtered_filenames.append(fname)
-
-                    print(f"KBLIs: {seen_kbli}")
-                    texts = filtered_texts
-                    fileids = filtered_fileids
-                    filenames = filtered_filenames
+        texts, fileids, filenames = await self.get_filtered_chunks(rewritten=rewritten, context=context, texts=texts, fileids=fileids, filenames=filenames)
 
         print(fileids)
         print(filenames)
-
         reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
 
         print("===RERANKED===")
@@ -309,23 +296,51 @@ class ChatflowHandler:
 
         print("Exiting handle_full_retrieval method")
         return answer, citations
+    
+    async def handle_failed_answer_from_llm(self, req: ChatRequest, helpdesk_active_status: bool, ret_conversation_id: str, rewritten:str, initial_message: str, category: str, q_category: Tuple, answer: str, question_id: str, answer_id: str):
+        await self.repository.flag_message_cannot_answer_by_id(question_id, answer_id)
+        ask_helpdesk = False
+        if (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')) and helpdesk_active_status:
+            await self.repository.change_is_ask_helpdesk_status(ret_conversation_id)
+            ask_helpdesk = True
+        return_data = FinalResponse(
+            conversation_id=ret_conversation_id,
+            rewritten_query=rewritten,
+            category=category,
+            question_category=q_category,
+            answer=(initial_message or "") + answer,
+            question_id=question_id,
+            answer_id=answer_id,
+            is_ask_helpdesk=ask_helpdesk
+        )
+        return self._build_final_response(
+            req=req,
+            data=return_data)
+    
+    async def check_existing_helpdesk_flow(self, req: ChatRequest):
+        if req.conversation_id == "":
+            return None
 
+        ask_status = await self.repository.check_is_ask_helpdesk(req.conversation_id)
+        if ask_status:
+            return await self.handle_helpdesk_confirmation_answer(req=req)
+
+        helpdesk_status = await self.repository.check_is_helpdesk(req.conversation_id)
+        if helpdesk_status:
+            return FinalResponse(
+                conversation_id=req.conversation_id,
+                answer="Percakapan telah dipindahkan ke helpdesk.",
+                is_helpdesk=True
+            )
+
+        return None
     
     async def chatflow_call(self, req: ChatRequest):
         print("Entering chatflow_call method")
         helpdesk_active_status = await self.repository.check_helpdesk_activation()
-        if req.conversation_id != "":
-            ask_helpdesk_status = await self.repository.check_is_ask_helpdesk(req.conversation_id)
-            helpdesk_status = await self.repository.check_is_helpdesk(req.conversation_id)
-            if ask_helpdesk_status:
-                return await self.handle_helpdesk_confirmation_answer(req=req)
-            if helpdesk_status:
-                print("Already moved to helpdesk")
-                return await self._build_final_response(
-                    req=req,
-                    conversation_id=req.conversation_id,
-                    answer="Percakapan telah dipindahkan ke helpdesk.",
-                    is_helpdesk=True)
+        helpdesk_result = await self.check_existing_helpdesk_flow(req)
+        if helpdesk_result:
+            return self._build_final_response(req=req, data=helpdesk_result)
             
         start_timestamp = req.start_timestamp
         ret_conversation_id = req.conversation_id
@@ -377,26 +392,11 @@ class ChatflowHandler:
         print("Exiting chatflow_call method")
 
         if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')) or (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
-            await self.repository.flag_message_cannot_answer_by_id(question_id, answer_id)
-            ask_helpdesk = False
-            if (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')) and helpdesk_active_status:
-                await self.repository.change_is_ask_helpdesk_status(ret_conversation_id)
-                ask_helpdesk = True
-            return await self._build_final_response(
-                req=req,
-                conversation_id=ret_conversation_id,
-                rewritten_query=rewritten,
-                category=category,
-                question_category=q_category,
-                answer=(initial_message or "") + answer,
-                question_id=question_id,
-                answer_id=answer_id,
-                is_ask_helpdesk=ask_helpdesk)
+            return await self.handle_failed_answer_from_llm(req=req, helpdesk_active_status=helpdesk_active_status, ret_conversation_id=ret_conversation_id, rewritten=rewritten, initial_message=initial_message, category=category, q_category=q_category, answer=answer, question_id=question_id, answer_id=answer_id)
         
         await self.repository.ingest_citations(citations, ret_conversation_id, req.query)
 
-        return await self._build_final_response(
-            req=req,
+        return_data = FinalResponse(
             conversation_id=ret_conversation_id,
             rewritten_query=rewritten,
             category=category,
@@ -406,4 +406,8 @@ class ChatflowHandler:
             answer_id=answer_id,
             citations=citations,
             is_answered=is_faq,
-            is_faq=is_faq)
+            is_faq=is_faq
+        )
+        return self._build_final_response(
+            req=req,
+            data=return_data)

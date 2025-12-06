@@ -1,15 +1,15 @@
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Optional, Tuple
 
 class FinalResponse(BaseModel):
     conversation_id: str = ""
     rewritten_query: str = ""
-    answer: str = ""
-    citations: List = []
     category: str = ""
-    question_category: Optional[Dict] = None
+    question_category: Optional[Tuple[str, ...]] = None
+    answer: str = ""
     question_id: int = 0
     answer_id: int = 0
+    citations: List = []
     is_helpdesk: bool = False
     is_answered: bool = False
     is_ask_helpdesk: bool = False
