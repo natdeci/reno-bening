@@ -114,6 +114,7 @@ async def classify_collection(user_query: str, history_context: str) -> str:
     allowed = {
       "panduan_collection",
       "peraturan_collection",
+      "uraian_collection",
       "helpdesk",
       "greeting_query",
       "thank_you",
