@@ -13,16 +13,38 @@ import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-
 class PDFRoutes:
     def __init__(self):
         self.router = APIRouter()
         self.handler = PDFExtractorHandler()
         self.processor = DocumentProcessor()
         self.repository = ExtractRepository()
-        self.timezone = "Asia/Jakarta"
+        self.TZ_JAKARTA = ZoneInfo("Asia/Jakarta") 
         self.setup_routes()
         print("PDFExtractor routes initialized")
+
+    async def _update_status(self, status: str, doc_id: str):
+        """Updates document status unless it is an FAQ document."""
+        if not doc_id.startswith("faq-"):
+            await self.repository.update_document_status(status, int(doc_id))
+
+    def _process_chunks(self, text: str, base_metadata: dict):
+        """Handles chunking logic for both PDF + TXT."""
+        processed_chunks = self.processor.process_text(text, doc_metadata=base_metadata)
+
+        all_docs = []
+        for chunk_data in processed_chunks:
+            chunk_meta = chunk_data.copy()
+            chunk_meta.pop("text", None)
+            docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
+            all_docs.extend(docs)
+        return all_docs
+
+    def _log_info(self, id, filename, category, start, end):
+        print(
+            f"[INFO] File ID: {id}, Filename: {filename}, "
+            f"Category: {category}, Start time: {start}, End time: {end}"
+        )
 
     def setup_routes(self):
         @self.router.post("/pdf")
@@ -35,44 +57,34 @@ class PDFRoutes:
         ):
             print("Processing PDF")
 
-            extract_start = datetime.now(ZoneInfo(self.timezone)).strftime("%Y-%m-%d %H:%M:%S")
-            await self.repository.update_document_status("processing", int(id))
+            start = datetime.now(self.TZ_JAKARTA).strftime("%Y-%m-%d %H:%M:%S")
+            await self._update_status("processing", id)
 
             try:
                 text = await self.handler.extract_text(file, category)
-                extract_end = time.time()
-                
+
                 # proses ingestion
-                processed_chunks = await self.processor.process_text(
-                    text,
-                    doc_metadata={"file_id": id, "category": category, "filename": filename}
-                )
+                metadata={"file_id": id, "category": category, "filename": filename}
+                processed_chunks = self._process_chunks(text, metadata)
 
-                all_docs = []
-                for chunk_data in processed_chunks:
-                    chunk_meta = chunk_data.copy()
-                    chunk_meta.pop("text", None)
-                    docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
-                    all_docs.extend(docs)
+                upsert_documents(processed_chunks)
 
-                upsert_documents(all_docs)
+                end = datetime.now(self.TZ_JAKARTA).strftime("%Y-%m-%d %H:%M:%S")
 
-                extract_end = datetime.now(ZoneInfo(self.timezone)).strftime("%Y-%m-%d %H:%M:%S")
+                self._log_info(id, filename, category, start, end)
 
-                print(f"[INFO] File ID: {id}, Filename: {filename}, Category: {category}, Start time: {extract_start}, End time: {extract_end}")
-
-                await self.repository.update_document_status("finished", int(id))
+                await self._update_status("finished", id)
 
                 return {
                     "data": {
                         "id": id,
                         "category": category,
                         "filename": filename,
-                        "chunks_upserted": len(all_docs)
+                        "chunks_upserted": len(processed_chunks)
                     }
                 }
             except Exception as e:
-                await self.repository.update_document_status("failed", int(id))
+                await self._update_status("failed", id)
                 return {
                     "data": {
                         "id": id,
@@ -93,15 +105,13 @@ class PDFRoutes:
             key_checked: str = Depends(verify_api_key)
         ):
             print("Processing TXT...")
-            extract_start = datetime.now(ZoneInfo(self.timezone)).strftime("%Y-%m-%d %H:%M:%S")
+            start = datetime.now(self.TZ_JAKARTA).strftime("%Y-%m-%d %H:%M:%S")
 
-            if not id.startswith("faq-"):
-                await self.repository.update_document_status("processing", int(id))
+            await self._update_status("processing", id)
 
             try:
                 content = await file.read()
                 text = content.decode("utf-8").strip()
-
                 base_metadata = {
                     "file_id": id,
                     "category": category,
@@ -110,45 +120,31 @@ class PDFRoutes:
 
                 has_delimiter = "---text---" in text
                 has_faq_pattern = bool(re.search(r"(?mi)^\s*q\s*[:\-]", text))
-
-                all_docs = []
-
-            
+        
                 if has_delimiter or has_faq_pattern:
-                    docs = parse_chunk_text(text, default_metadata=base_metadata)
-                    all_docs.extend(docs)
+                    all_chunks = parse_chunk_text(text, default_metadata=base_metadata)
                 else:
-                    processed_chunks = await self.processor.process_text(
-                        text,
-                        doc_metadata=base_metadata
-                    )
+                    all_chunks = self._process_chunks(text, base_metadata)
 
-                    for chunk_data in processed_chunks:
-                        chunk_meta = chunk_data.copy()
-                        chunk_meta.pop("text", None)
-                        docs = parse_chunk_text(chunk_data["text"], default_metadata=chunk_meta)
-                        all_docs.extend(docs)
+                upsert_documents(all_chunks)
 
-                upsert_documents(all_docs)
+                end = datetime.now(self.TZ_JAKARTA).strftime("%Y-%m-%d %H:%M:%S")
 
-                extract_end = datetime.now(ZoneInfo(self.timezone)).strftime("%Y-%m-%d %H:%M:%S")
+                self._log_info(id, filename, category, start, end)
 
-                print(f"[INFO] File ID: {id}, Filename: {filename}, Category: {category}, Start time: {extract_start}, End time: {extract_end}")
-
-                if not id.startswith("faq-"):
-                    await self.repository.update_document_status("finished", int(id))
+                await self._update_status("finished", id)
 
                 return {
                     "data": {
                         "id": id,
                         "category": category,
                         "filename": filename,
-                        "chunks_upserted": len(all_docs)
+                        "chunks_upserted": len(all_chunks)
                     }
                 }
             except Exception as e:
                 if not id.startswith("faq-"):
-                    await self.repository.update_document_status("failed", int(id))
+                    await self._update_status("failed", id)
                 return {
                     "data": {
                         "id": id,

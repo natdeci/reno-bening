@@ -14,6 +14,20 @@ model = ChatOllama(
     model=os.getenv("LLM_MODEL"),
     temperature=os.getenv("OLLAMA_TEMPERATURE"),
 )
+
+class LimitedPostgresHistory(PostgresChatMessageHistory):
+    def __init__(self, table_name, session_id, sync_connection, max_messages=6):
+        super().__init__(table_name, session_id, sync_connection=sync_connection)
+        self.max_messages = max_messages
+
+    @property
+    def messages(self):
+        """Return only the last N messages."""
+        all_msgs = super().messages
+        limited = all_msgs[-self.max_messages:]
+
+        return limited
+
 table_name = "chat_history"
 human_template = "User Query:{question}"
 prompt_template = ChatPromptTemplate.from_messages(
@@ -46,7 +60,7 @@ def get_by_session_id(session_id: str) -> BaseChatMessageHistory:
     )
 
     sync_connection.autocommit = True
-    return PostgresChatMessageHistory(table_name, session_id, sync_connection=sync_connection)
+    return LimitedPostgresHistory(table_name, session_id, sync_connection, max_messages=6)
 
 chain_with_history = RunnableWithMessageHistory(chain, get_by_session_id, input_messages_key="question", history_messages_key="history",utput_messages_key="answer")
 
@@ -62,7 +76,7 @@ def get_helpdesk_response(helpdesk_active_status: bool):
 def generate_helpdesk_response(user_query: str, conversation_id: str, helpdesk_active_status: bool) -> str:
     print("Entering generate_helpdesk_response method")
     helpdesk_response = get_helpdesk_response(helpdesk_active_status)
-    result = chain_with_history.ainvoke(
+    result = chain_with_history.invoke(
         {
             "question": user_query,
             "helpdesk_response": helpdesk_response

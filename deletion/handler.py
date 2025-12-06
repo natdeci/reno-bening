@@ -19,7 +19,7 @@ class ChunkDeletionHandler:
                 collection_name = "peraturan_collection"
             elif category == "uraian":
                 collection_name = "uraian_collection"
-            url = f"{os.getenv('QDRANT_URL')}/collections/{collection_name}/points/delete"
+            url = f"{os.getenv('QDRANT_URL')}/collections/{collection_name}/points/delete/"
             payload = {
                 "filter": {
                     "must": [

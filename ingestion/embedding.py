@@ -37,7 +37,6 @@ class BM25SparseEmbedder:
             processed = []
             for v in raw_vectors:
 
-                # v is already {"indices": [...], "values": [...]}
                 indices = v.get("indices", [])
                 values = v.get("values", [])
 

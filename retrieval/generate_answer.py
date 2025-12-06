@@ -26,10 +26,7 @@ class LimitedPostgresHistory(PostgresChatMessageHistory):
         """Return only the last N messages."""
         all_msgs = super().messages
         limited = all_msgs[-self.max_messages:]
-        print("=== HISTORY SENT TO LLM ===")
-        for m in limited:
-            print(m.type, ":", m.content)
-        print("===========================")
+
         return limited
 
 table_name = "chat_history"

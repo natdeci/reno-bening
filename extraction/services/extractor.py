@@ -53,17 +53,18 @@ class PDFExtractorHandler:
             ]
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=600.0) as client:
+        async with httpx.AsyncClient(timeout=600) as client:
+            try:
                 resp = await client.post(
                     f"{self.base_url.rstrip('/')}/api/chat",
-                    json=payload
+                    json=payload,
+                    timeout=600
                 )
                 resp.raise_for_status()
                 data = resp.json()
                 return data["message"]["content"]
-        except requests.exceptions.RequestException as e:
-            return f"[ERROR calling VLM: {e}]"
+            except requests.exceptions.RequestException as e:
+                return f"[ERROR calling VLM: {e}]"
 
     async def extract_text(self, file: UploadFile, category: str) -> str:
         try:
