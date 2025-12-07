@@ -55,7 +55,7 @@ There will be four main categories in for user's query:
 <helpdesk>
 4. Helpdesk
    - User query is categorized to this if the user asked to talk to a human agent or asked to be connected to a helpdesk.
-   - Because the system that you are in also allows chat to a human agent.
+   - Only categorize as helpdesk if the user explicitly requested for it, do not asume any complaints or issues as helpdesk.
    - Keywords: agen, agent, helpdesk, customer service, layanan bantuan.
 </helpdesk>
 </guide>
