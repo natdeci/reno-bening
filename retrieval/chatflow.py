@@ -8,6 +8,7 @@ from typing import Tuple
 from .entity.chat_request import ChatRequest
 from .entity.final_answer import FinalResponse
 from .generate_fallback_question import generate_helpdesk_confirmation_answer
+from .evaluate_llm_answer import evaluate_llm_answer
 from .generate_answer import generate_answer
 from .classify_kbli import classify_kbli
 from .classify_specific import classify_specific
@@ -37,6 +38,7 @@ class ChatflowHandler:
         self.retriever = retrieve_knowledge
         self.rerank_new = rerank_documents
         self.llm = generate_answer
+        self.evaluate = evaluate_llm_answer
         self.question_classifier = classify_user_query
         self.repository = ChatflowRepository()
         print("Chatflow handler initialized")
@@ -301,11 +303,12 @@ class ChatflowHandler:
 
         citation_str = ", ".join(cleaned_names)
         answer = self.llm(req.query, reranked, ret_conversation_id, req.platform, status, helpdesk_active_status, collection_choice, citation_str)
+        score = await self.evaluate(req.query, context, reranked, answer)
 
         print("Exiting handle_full_retrieval method")
-        return answer, citations
+        return answer, citations, score
     
-    async def handle_failed_answer_from_llm(self, req: ChatRequest, helpdesk_active_status: bool, ret_conversation_id: str, rewritten:str, initial_message: str, category: str, q_category: Tuple, answer: str, question_id: str, answer_id: str):
+    async def handle_failed_answer_from_llm(self, req: ChatRequest, helpdesk_active_status: bool, ret_conversation_id: str, rewritten:str, initial_message: str, category: str, q_category: Tuple, answer: str, question_id: str, answer_id: str, score: int = 0):
         print("Entering handle_failed_answer_from_llm method")
         await self.repository.flag_message_cannot_answer_by_id(question_id)
         ask_helpdesk = False
@@ -318,7 +321,7 @@ class ChatflowHandler:
             rewritten_query=rewritten,
             category=category,
             question_category=q_category,
-            answer=(initial_message or "") + answer,
+            answer=(initial_message or "") + answer + f"\n\nSCORE: {str(score)}",
             question_id=question_id,
             answer_id=answer_id,
             is_ask_helpdesk=ask_helpdesk
@@ -387,9 +390,10 @@ class ChatflowHandler:
             citations = faq_response["citations"]
             answer = self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform, status, helpdesk_active_status)
             await self.repository.flag_message_is_answered(ret_conversation_id, req.query)
+            score = await self.evaluate(req.query, context, faq_response["faq_string"], answer)
             is_faq=True
         else:
-            answer, citations = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
+            answer, citations, score = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
 
         await self.repository.ingest_start_timestamp(ret_conversation_id, start_timestamp)
         category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
@@ -404,7 +408,7 @@ class ChatflowHandler:
         print("Exiting chatflow_call method")
 
         if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')) or (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
-            return await self.handle_failed_answer_from_llm(req=req, helpdesk_active_status=helpdesk_active_status, ret_conversation_id=ret_conversation_id, rewritten=rewritten, initial_message=initial_message, category=category, q_category=q_category, answer=answer, question_id=question_id, answer_id=answer_id)
+            return await self.handle_failed_answer_from_llm(req=req, helpdesk_active_status=helpdesk_active_status, ret_conversation_id=ret_conversation_id, rewritten=rewritten, initial_message=initial_message, category=category, q_category=q_category, answer=answer, question_id=question_id, answer_id=answer_id, score=score)
         
         await self.repository.ingest_citations(citations, ret_conversation_id, req.query)
 
@@ -413,7 +417,7 @@ class ChatflowHandler:
             rewritten_query=rewritten,
             category=category,
             question_category=q_category,
-            answer=(initial_message or "") + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
+            answer=(initial_message or "") + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*" + f"\n\nSCORE: {str(score)}",
             question_id=question_id,
             answer_id=answer_id,
             citations=citations,
