@@ -12,7 +12,7 @@ class ChatflowRepository:
     async def create_new_conversation(self, session_id:str, platform:str, user_id:str):
         print(f"Creating new conversation: {session_id}")
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         query="""
         INSERT INTO bkpm.conversations (id, start_timestamp, platform, platform_unique_id, is_ask_helpdesk)
@@ -96,7 +96,7 @@ class ChatflowRepository:
 
     async def ingest_skipped_question(self, session_id: str, message: str, category: str, sub_category: str):
         print("Entering ingest_skipped_question method")
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         query="""
         INSERT INTO bkpm.chat_history_outside_oss (session_id, message, question_category, question_sub_category, created_at)
@@ -373,8 +373,7 @@ class ChatflowRepository:
     async def ingest_end_timestamp(self, session_id: str):
         print("Entering ingest_end_timestamp method")
 
-        tz = pytz.timezone(self.timezone)
-        jakarta_now = datetime.datetime.now(tz).replace(tzinfo=None)
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
         query = """
         UPDATE bkpm.conversations
@@ -384,7 +383,7 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, jakarta_now, session_id)
+            await conn.execute(query, now, session_id)
 
         print("Exiting ingest_end_timestamp method")
 
