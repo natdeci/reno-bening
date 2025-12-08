@@ -167,8 +167,6 @@ class ChatflowHandler:
             basic_return = "Terima kasih telah menghubungi layanan Kementerian Investasi & Hilirisasi/BKPM!"
         elif collection_choice == "classified_information":
             basic_return = "Mohon maaf, pertanyaan tersebut melibatkan informasi konfidensial/rahasia. Silakan tanyakan pertanyaan lain."
-
-        await self.repository.ingest_skipped_question(ret_conversation_id, req.query, "Pertanyaan di luar OSS", "Pertanyaan di luar OSS")
         
         print("Exiting handle_default_answering method")
         return_data = FinalResponse(
@@ -303,7 +301,7 @@ class ChatflowHandler:
 
         citation_str = ", ".join(cleaned_names)
         answer = self.llm(req.query, reranked, ret_conversation_id, req.platform, status, helpdesk_active_status, collection_choice, citation_str)
-        score = await self.evaluate(req.query, context, reranked, answer)
+        score = await self.evaluate(req.query, context, answer)
 
         print("Exiting handle_full_retrieval method")
         return answer, citations, score
@@ -390,7 +388,7 @@ class ChatflowHandler:
             citations = faq_response["citations"]
             answer = self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform, status, helpdesk_active_status)
             await self.repository.flag_message_is_answered(ret_conversation_id, req.query)
-            score = await self.evaluate(req.query, context, faq_response["faq_string"], answer)
+            score = await self.evaluate(req.query, context, answer)
             is_faq=True
         else:
             answer, citations, score = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
