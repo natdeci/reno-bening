@@ -17,8 +17,8 @@ model = ChatOllama(
     model=os.getenv("LLM_MODEL"),
     temperature=os.getenv("OLLAMA_TEMPERATURE"),
     repeat_penalty=2.0,
-    repeat_last_n=64
-)
+    repeat_last_n=6
+    )
 
 table_name = "chat_history"
 human_template = "Retrieval Result:{retrieval}\nUser Query:{question}\nCitation Prefix:{citation_prefix}"
