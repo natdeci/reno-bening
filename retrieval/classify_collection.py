@@ -56,6 +56,15 @@ There will be four main categories in for user's query:
 4. Helpdesk
    - User query is categorized to this if the user asked to talk to a human agent or asked to be connected to a helpdesk.
    - Because the system that you are in also allows chat to a human agent.
+   - Technical or access problems (e.g. “bot gabisa diakses”, “error login”, “gak bisa buka OSS”, “kenapa websitenya down”) MUST NOT be classified as Helpdesk.
+   - IMPORTANT: Do NOT classify as Helpdesk if:
+      * the user is confused,
+      * the user complains about an error or system issue,
+      * the system/website/bot is not accessible,
+      * the user cannot login,
+      * the query is about troubleshooting,
+      * the query is unclear,
+      * the query could be answered by the system.
    - Keywords: agen, agent, helpdesk, customer service, layanan bantuan.
 </helpdesk>
 </guide>
