@@ -144,7 +144,9 @@ class ChatflowHandler:
             answer=message,
             question_id=question_id,
             answer_id=answer_id,
-            is_ask_helpdesk=is_ask_helpdesk
+            is_ask_helpdesk=is_ask_helpdesk,
+            is_answered=True,
+            is_faq=True
         )
         return self._build_final_response(
             req=req,

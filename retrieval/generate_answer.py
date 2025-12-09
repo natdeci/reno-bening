@@ -74,10 +74,10 @@ The retrieval may include:
 </main_instructions>
 
 IMPORTANT INSTRUCTION REGARDING URL AND LINKS:
-- Salin link jika ada link seperti Google Drive atau link apapun itu PERSIS seperti di teks, JANGAN ubah apapun
-- Periksa ulang setiap karakter sebelum output
-- Huruf besar/kecil HARUS sama persis
-- Panjang link harus TEPAT
+- If there is a link or URL from the knowledge retrieval that is a suitable answer, you MUST generate the exact same link
+- Check again if link generation is correct
+- Capital letters must be correct
+- The character length of the link must be accurate
          
 <output>
 - All responses must be in Bahasa Indonesia.
