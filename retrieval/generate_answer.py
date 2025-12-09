@@ -16,8 +16,10 @@ model = ChatOllama(
     base_url=os.getenv("OLLAMA_BASE_URL"),
     model=os.getenv("LLM_MODEL"),
     temperature=os.getenv("OLLAMA_TEMPERATURE"),
-    repeat_penalty=2.0,
-    repeat_last_n=6
+    repeat_penalty=os.getenv("REPEAT_PENALTY"),
+    top_k=os.getenv("TOP_K_LLM"),
+    top_p=os.getenv("TOP_P"),
+    num_ctx=os.getenv("NUM_CTX")
     )
 
 table_name = "chat_history"
