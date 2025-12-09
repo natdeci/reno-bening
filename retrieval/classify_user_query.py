@@ -1,4 +1,4 @@
-import os
+import os 
 import json
 import re
 import requests
@@ -10,36 +10,6 @@ load_dotenv()
 
 model_name = os.getenv("LLM_MODEL")
 model_temperature = os.getenv("OLLAMA_TEMPERATURE")
-
-def extract_json(text):
-    start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1:
-        return None
-    
-    cleaned = text[start:end+1]
-
-    cleaned = re.sub(r'}[^}]*$', '}', cleaned)
-
-    return cleaned
-
-def normalize_result(result: dict) -> dict:
-
-    if "category" in result and "sub_category" in result:
-        return result
-
-    if len(result) == 1:
-        key = list(result.keys())[0]
-        value = result[key]
-        return {
-            "category": key,
-            "sub_category": value
-        }
-
-    return {
-        "category": "Unknown",
-        "sub_category": "Unknown"
-    }
 
 async def load_classifications_from_db():
     pool = await get_pool()
@@ -99,26 +69,32 @@ async def classify_user_query(user_query: str) -> dict:
     Remember: Output ONLY the JSON object, use EXACT category names from the list.
     """
 
-    content = None
     try:
         response = await ollama_chat_async(
             model=model_name,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": user_prompt, "options": {"temperature": model_temperature}}
             ],
-            options={"temperature": 0.0},
             format="json",
             stream=False
         )
 
         content = response["message"]["content"].strip()
 
-        extracted = extract_json(content)
+        content = re.sub(r'```json\s*', '', content)
+        content = re.sub(r'```\s*', '', content).strip()
 
-        raw = json.loads(extracted)
-        result = normalize_result(raw)
-        print("Classification:", result)
+        json_match = re.search(r'\{[^{}]*\}', content, re.DOTALL)
+        if json_match:
+            content = json_match.group(0)
+
+        result = json.loads(content)
+
+        if "category" not in result or "sub_category" not in result:
+            raise ValueError("Missing required JSON fields.")
+
+        print("Classification OK:", result)
         return result
 
     except Exception as e:
