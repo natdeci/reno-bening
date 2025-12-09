@@ -56,6 +56,7 @@ class ChatflowHandler:
     async def handle_helpdesk_confirmation_answer(self, req: ChatRequest):
         print("Entering handle_helpdesk_confirmation_answer method")
         is_ask_helpdesk_conf = True
+        is_helpdesk = False
         helpdesk_confirmation_answer = self.llm_helpdesk(req.query, req.conversation_id)
         question_id, _ = await self.repository.get_chat_history_id(req.conversation_id, req.query)
         if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
@@ -63,13 +64,16 @@ class ChatflowHandler:
             is_ask_helpdesk_conf = False
             if helpdesk_confirmation_answer == "Percakapan ini akan dihubungkan ke agen layanan.":
                 await self.repository.change_is_helpdesk(req.conversation_id)
+                is_helpdesk = True
         print("Exiting handle_helpdesk_confirmation_answer method")
         return FinalResponse(
             conversation_id=req.conversation_id,
             answer=helpdesk_confirmation_answer,
             question_id=question_id,
-            is_helpdesk=True,
-            is_ask_helpdesk=is_ask_helpdesk_conf
+            is_helpdesk=is_helpdesk,
+            is_ask_helpdesk=is_ask_helpdesk_conf,
+            is_answered=True,
+            is_faq=True
         )
     
     async def get_greetings_message(self):
@@ -104,8 +108,10 @@ class ChatflowHandler:
     async def handle_helpdesk_response(self, helpdesk_active_status: bool, req: ChatRequest, ret_conversation_id: str, initial_message: str, rewritten: str):
         print("Entering handle_helpdesk_response method")
         print("Helpdesk Status: " + str(helpdesk_active_status))
+        is_helpdesk = False
         if helpdesk_active_status:
             await self.repository.change_is_helpdesk(ret_conversation_id)
+            is_helpdesk = True
         helpdesk_response = await self.generate_helpdesk_routing_response(req=req, ret_conversation_id=ret_conversation_id, helpdesk_active_status=helpdesk_active_status)
         question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
 
@@ -116,7 +122,9 @@ class ChatflowHandler:
             answer=(initial_message or "") + helpdesk_response,
             question_id=question_id,
             answer_id=answer_id,
-            is_helpdesk=True
+            is_helpdesk=is_helpdesk,
+            is_answered=True,
+            is_faq=True
         )
         return self._build_final_response(
             req=req,
@@ -173,7 +181,9 @@ class ChatflowHandler:
             conversation_id=ret_conversation_id,
             rewritten_query=rewritten,
             answer=basic_return,
-            is_feedback=False
+            is_feedback=False,
+            is_answered=True,
+            is_faq=True
         )
         return self._build_final_response(
             req=req,
@@ -342,7 +352,9 @@ class ChatflowHandler:
             return FinalResponse(
                 conversation_id=req.conversation_id,
                 answer="Percakapan telah dipindahkan ke helpdesk.",
-                is_helpdesk=True
+                is_helpdesk=True,
+                is_answered=True,
+                is_faq=True
             )
         
         print("Exiting check_existing_helpdesk_flow method")
