@@ -103,7 +103,7 @@ class ChatflowHandler:
     
     async def handle_helpdesk_response(self, helpdesk_active_status: bool, req: ChatRequest, ret_conversation_id: str, initial_message: str, rewritten: str):
         print("Entering handle_helpdesk_response method")
-
+        print("Helpdesk Status: " + str(helpdesk_active_status))
         if helpdesk_active_status:
             await self.repository.change_is_helpdesk(ret_conversation_id)
         helpdesk_response = await self.generate_helpdesk_routing_response(req=req, ret_conversation_id=ret_conversation_id, helpdesk_active_status=helpdesk_active_status)
@@ -351,6 +351,7 @@ class ChatflowHandler:
     async def chatflow_call(self, req: ChatRequest):
         print("Entering chatflow_call method")
         helpdesk_active_status = await self.repository.check_helpdesk_activation()
+        print("Helpdesk Status: " + str(helpdesk_active_status))
         helpdesk_result = await self.check_existing_helpdesk_flow(req)
         if helpdesk_result:
             return self._build_final_response(req=req, data=helpdesk_result)
