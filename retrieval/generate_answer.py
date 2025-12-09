@@ -72,6 +72,12 @@ The retrieval may include:
    - If you truly cannot answer, or the retrieval result deviates too much from what is asked, respond politely in Indonesian:
      {fail_message}
 </main_instructions>
+
+IMPORTANT INSTRUCTION REGARDING URL AND LINKS:
+- Salin link jika ada link seperti Google Drive atau link apapun itu PERSIS seperti di teks, JANGAN ubah apapun
+- Periksa ulang setiap karakter sebelum output
+- Huruf besar/kecil HARUS sama persis
+- Panjang link harus TEPAT
          
 <output>
 - All responses must be in Bahasa Indonesia.
