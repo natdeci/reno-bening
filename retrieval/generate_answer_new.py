@@ -2,6 +2,7 @@ import os
 import re
 from dotenv import load_dotenv
 from util.async_ollama import ollama_chat_async
+from util.sanitize_input import sanitize_input
 
 load_dotenv()
 
@@ -19,12 +20,28 @@ def cleanse_llm_response(text: str):
 
     return text.strip()
 
-async def generate_answer_new(user_query: str, history_context: str, platform: str, context_docs: list[str], collection_choice: str | None = None, citation_str: str | None = None) -> str:
+def get_fail_message(status: bool, helpdesk_active_status: bool) -> str:
+    if status:
+        if helpdesk_active_status:
+            return "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain. Untuk bantuan lebih lanjut, apakah anda ingin dihubungkan ke helpdesk agen layanan?"
+        else:
+            return "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id"
+    else:
+        return "Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
+
+async def generate_answer_new(user_query: str, history_context: str, platform: str, status: bool, helpdesk_active_status: bool, context_docs: list[str], collection_choice: str | None = None, citation_str: str | None = None) -> str:
     print("Entering generate_answer_new method")
+
     citation_prefix = ""
     if collection_choice == "peraturan_collection":
         citation_prefix = f"Menurut {citation_str},"
+
     context = "\n\n".join(context_docs)
+
+    fail_message = get_fail_message(status, helpdesk_active_status)
+
+    safe_query = sanitize_input(user_query)
+
     user = f"""
     <context>
     {history_context}
@@ -40,11 +57,11 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
     </citation_prefix>
 
     <user_query>
-    {user_query}
+    {safe_query}
     </user_query>
     """
 
-    prompt = """
+    prompt = f"""
     <introduction>
     You are ""Asisten Virtual Badan Koordinasi Penanaman Modal", a formal, intelligent, and reliable assistant that always answers in Bahasa Indonesia.
             
@@ -69,8 +86,15 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
     - If the retrieval results includes numerical thresholds, definitions, or legal limits relevant to the question, use those first.
     - If a general answer in the retrieval results fits, provide it directly.
     - If some details are missing but the main answer is clear, give it and briefly note the limitation.
+
+    2. Use General Answer as Backup (Domain-Limited):
+    - You are a government assistant specialized ONLY in indonesian business and investment information.
+    - If the provided retrieval results is irrelevant to those topics, DO NOT answer using general or everyday knowledge (such as cooking, health, or lifestyle topics).
+    - Do not answer queries that are about the state of a website service (like an error at a webpage), you are only responsible for the contents and guidelines within it, not the web service.
+    - Instead, politely respond in Indonesian:
+        > {fail_message}
             
-    2. Ask for confirmation or detail if user's query is not specific enough
+    3. Ask for confirmation or detail if user's query is not specific enough
     - After answering, if the retrieval results mentions different rules for subcategories and the user didn't specify theirs, ask for clarification.
     - Check whether the query is too broad and the provided answer is connected to the query but is more specific
     - Also check from the chat history whether the current query is a follow up of the previous one or not
@@ -79,11 +103,22 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
             1. ... Bisa tolong tanyakan dengan lebih detail soal (topik) yang mana?
             2. ... Boleh tolong tanya secara spesifik (topik) tentang apa?
     - Make sure the answer is in markdown bold
+
+    4. Final Fallback:
+    - If you truly cannot answer, or the retrieval result deviates too much from what is asked, respond politely in Indonesian:
+        {fail_message}
     </main_instructions>
+
+    IMPORTANT INSTRUCTION REGARDING URL AND LINKS:
+    - If there is a link or URL from the knowledge retrieval that is a suitable answer, you MUST generate the exact same link
+    - Check again if link generation is correct
+    - Capital letters must be correct
+    - The character length of the link must be accurate
             
     <output>
     - All responses must be in Bahasa Indonesia.
     - Start your response with citation_prefix if not empty.
+    - Avoid fillers phrases like "Berdasarkan informasi yang saya miliki...".
     - Answer only what is asked by the user and do not add more information.
     - Do not add comma ',' or periods '.' for numbers of KBLI.
     - If the knowledge retrieval is procedural, write clear numbered steps.
@@ -95,7 +130,7 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
         model=model_name,
         messages=[
             {"role": "system", "content": prompt},
-            {"role": "user", "content": user, "options": {"temperature": model_temperature}}
+            {"role": "user", "content": user, "options": {"temperature": model_temperature, "repeat_penalty": 2.0, "repeat_last_n": 64}}
         ]
     )
 

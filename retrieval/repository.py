@@ -106,23 +106,16 @@ class ChatflowRepository:
             print("Exiting get_revision method")
             return revision
         
-    async def flag_message_is_answered(self, session_id: str, question: str):
+    async def flag_message_is_answered(self, question_id: int):
         print("Entering flag_message_is_answered method")
         query = """
         UPDATE bkpm.chat_history
         SET is_answered = TRUE
-        WHERE id = (
-            SELECT id FROM bkpm.chat_history
-            WHERE session_id = $1
-                AND message -> 'data' ->> 'content' = $2
-                AND message -> 'data' ->> 'type' = 'human'
-            ORDER BY id DESC
-            LIMIT 1
-        );
+        WHERE id = $1;
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, session_id, question)
+            await conn.execute(query, question_id)
         print("Exiting flag_message_is_answered method")
     
     async def flag_message_cannot_answer(self, session_id:str, question: str):
@@ -156,10 +149,9 @@ class ChatflowRepository:
             await conn.execute(query, question_id)
         print("Exiting flag_message_cannot_answer_by_id method")
 
-    async def ingest_category(self, session_id:str, question: str, col_name: str):
+    async def ingest_category(self, question_id: int, col_name: str):
         print("Ingesting data source for user's question")
-        print(f"session_id: {session_id}")
-        print(f"question: {question}")
+        print(f"question_id: {question_id}")
         print(f"col_name: {col_name}")
 
         if col_name == "panduan_collection":
@@ -173,19 +165,12 @@ class ChatflowRepository:
         query="""
         UPDATE bkpm.chat_history
         SET category = $1
-        WHERE id = (
-            SELECT id FROM bkpm.chat_history
-            WHERE session_id = $2
-                AND message -> 'data' ->> 'content' = $3
-                AND message -> 'data' ->> 'type' = 'human'
-            ORDER BY id DESC
-            LIMIT 1
-        );
+        WHERE id = $2;
         """
 
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, category, session_id, question)
+            await conn.execute(query, category, question_id)
 
         print("Exiting ingest_category method")
         return category
@@ -231,28 +216,21 @@ class ChatflowRepository:
             await conn.execute(query, rewritten, session_id)
         print("Exiting give_conversation_title method")
 
-    async def ingest_question_category(self, session_id:str, question: str, category: str, sub_category: str):
+    async def ingest_question_category(self, question_id: int, category: str, sub_category: str):
         print("Ingesting category for user's question")
         query="""
         UPDATE bkpm.chat_history
         SET question_category = $1, question_sub_category = $2
-        WHERE id = (
-            SELECT id FROM bkpm.chat_history
-            WHERE session_id = $3
-                AND message -> 'data' ->> 'content' = $4
-                AND message -> 'data' ->> 'type' = 'human'
-            ORDER BY id DESC
-            LIMIT 1
-        );
+        WHERE id = $3;
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, category, sub_category, session_id, question)
+            await conn.execute(query, category, sub_category, question_id)
 
         print(f"Message categorized as {category} and {sub_category} successfuly")
         return category, sub_category
     
-    async def ingest_citations(self, citations: list, session_id:str, question: str):
+    async def ingest_citations(self, citations: list, question_id: int):
         print("Entering ingest_citations method...")
 
         citations_dict = [{"id": cid, "name": cname} for cid, cname in citations]
@@ -261,19 +239,12 @@ class ChatflowRepository:
         query="""
         UPDATE bkpm.chat_history
         SET citation = $1
-        WHERE id = (
-            SELECT id FROM bkpm.chat_history
-            WHERE session_id = $2
-                AND message -> 'data' ->> 'content' = $3
-                AND message -> 'data' ->> 'type' = 'human'
-            ORDER BY id DESC
-            LIMIT 1
-        );
+        WHERE id = $2;
         """
 
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, json_str, session_id, question)
+            await conn.execute(query, json_str, question_id)
         print("Exiting ingest_citations method...")
 
     async def change_is_ask_helpdesk_status(self, session_id: str):
@@ -373,24 +344,17 @@ class ChatflowRepository:
 
         print("Exiting ingest_end_timestamp method")
 
-    async def ingest_start_timestamp(self, session_id: str, start_timestamp: datetime):
+    async def ingest_start_timestamp(self, start_timestamp: datetime, question_id: int, answer_id: int):
 
         query = """
         UPDATE bkpm.chat_history
         SET start_timestamp = $1
-        WHERE id IN (
-            SELECT id
-            FROM bkpm.chat_history
-            WHERE session_id = $2
-            AND start_timestamp IS NULL
-            ORDER BY created_at DESC
-            LIMIT 2
-        );
+        WHERE id IN ($2, $3);
         """
 
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, start_timestamp, session_id)
+            await conn.execute(query, start_timestamp, question_id, answer_id)
 
         print("Start timestamp successfully ingested")
 
@@ -462,11 +426,21 @@ class ChatflowRepository:
         INSERT INTO bkpm.chat_history (session_id, message)
         VALUES
         ($1, $2),
-        ($1, $3);
+        ($1, $3)
+        RETURNING id;
         """
 
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, session_id, json.dumps(human_dict), json.dumps(ai_dict))
+            rows = await conn.fetch(query, session_id, json.dumps(human_dict), json.dumps(ai_dict))
 
-        print("Exiting insert_skip_chat method")
+        if len(rows) == 2:
+            question_id = rows[0]["id"]
+            answer_id = rows[1]["id"]
+            
+            print(f"Successfully inserted rows. Question ID: {question_id}, Answer ID: {answer_id}")
+            
+            return question_id, answer_id
+        else:
+            print("Warning: Failed to retrieve both IDs after insertion.")
+            return 0, 0

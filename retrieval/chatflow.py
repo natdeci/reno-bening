@@ -7,9 +7,8 @@ from dotenv import load_dotenv
 from typing import Tuple
 from .entity.chat_request import ChatRequest
 from .entity.final_answer import FinalResponse
-from .generate_fallback_question import generate_helpdesk_confirmation_answer
-from .evaluate_llm_answer import evaluate_llm_answer
-from .generate_answer import generate_answer
+from .generate_helpdesk_confirmation_answer_new import generate_helpdesk_confirmation_answer_new
+from .generate_answer_new import generate_answer_new
 from .classify_kbli import classify_kbli
 from .classify_specific import classify_specific
 from .knowledge_retrieval import retrieve_knowledge, retrieve_knowledge_faq
@@ -28,7 +27,7 @@ class ChatflowHandler:
         self.faq_limit = 3
         self.faq_threshold = 0.75
         self.tz = pytz.timezone("Asia/Jakarta")
-        self.llm_helpdesk = generate_helpdesk_confirmation_answer
+        self.llm_helpdesk_new = generate_helpdesk_confirmation_answer_new
         self.rewriter = rewrite_query
         self.classifier = classify_collection
         self.classify_kbli = classify_kbli
@@ -37,8 +36,7 @@ class ChatflowHandler:
         self.retriever_faq = retrieve_knowledge_faq
         self.retriever = retrieve_knowledge
         self.rerank_new = rerank_documents
-        self.llm = generate_answer
-        self.evaluate = evaluate_llm_answer
+        self.llm_new = generate_answer_new
         self.question_classifier = classify_user_query
         self.repository = ChatflowRepository()
         print("Chatflow handler initialized")
@@ -57,8 +55,9 @@ class ChatflowHandler:
         print("Entering handle_helpdesk_confirmation_answer method")
         is_ask_helpdesk_conf = True
         is_helpdesk = False
-        helpdesk_confirmation_answer = self.llm_helpdesk(req.query, req.conversation_id)
-        question_id, _ = await self.repository.get_chat_history_id(req.conversation_id, req.query)
+        helpdesk_confirmation_answer = await self.llm_helpdesk_new(req.query, req.conversation_id)
+        question_id, _ = await self.repository.insert_skip_chat(req.conversation_id, req.query, helpdesk_confirmation_answer)
+        await self.repository.flag_message_is_answered(question_id)
         if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
             await self.repository.change_is_ask_helpdesk_status(req.conversation_id)
             is_ask_helpdesk_conf = False
@@ -100,10 +99,10 @@ class ChatflowHandler:
         if helpdesk_active_status:
             helpdesk_response = "Percakapan ini akan dihubungkan ke agen layanan."
 
-        await self.repository.insert_skip_chat(session_id=ret_conversation_id, human_message=req.query, ai_message=helpdesk_response)
+        question_id, answer_id = await self.repository.insert_skip_chat(session_id=ret_conversation_id, human_message=req.query, ai_message=helpdesk_response)
 
         print("Exiting generate_helpdesk_routing_response method")
-        return helpdesk_response
+        return helpdesk_response, question_id, answer_id
     
     async def handle_helpdesk_response(self, helpdesk_active_status: bool, req: ChatRequest, ret_conversation_id: str, initial_message: str, rewritten: str):
         print("Entering handle_helpdesk_response method")
@@ -112,9 +111,8 @@ class ChatflowHandler:
         if helpdesk_active_status:
             await self.repository.change_is_helpdesk(ret_conversation_id)
             is_helpdesk = True
-        helpdesk_response = await self.generate_helpdesk_routing_response(req=req, ret_conversation_id=ret_conversation_id, helpdesk_active_status=helpdesk_active_status)
-        question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
-
+        helpdesk_response, question_id, answer_id = await self.generate_helpdesk_routing_response(req=req, ret_conversation_id=ret_conversation_id, helpdesk_active_status=helpdesk_active_status)
+        await self.repository.flag_message_is_answered(question_id)
         print("Exiting handle_helpdesk_response method")
         return_data = FinalResponse(
             conversation_id=ret_conversation_id,
@@ -133,10 +131,9 @@ class ChatflowHandler:
     async def handle_skip_collection_answer(self, req: ChatRequest, ret_conversation_id: str, rewritten: str, message: str, is_ask_helpdesk: bool):
         print("Entering handle_skip_collection_answer method")
 
-        await self.repository.insert_skip_chat(session_id=ret_conversation_id, human_message=req.query, ai_message=message)
-        question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
+        question_id, answer_id = await self.repository.insert_skip_chat(session_id=ret_conversation_id, human_message=req.query, ai_message=message)
         await self.repository.flag_message_cannot_answer_by_id(question_id)
-
+        await self.repository.flag_message_is_answered(question_id)
         print("Exiting handle_skip_collection_answer method")
         return_data = FinalResponse(
             conversation_id=ret_conversation_id,
@@ -177,7 +174,7 @@ class ChatflowHandler:
             basic_return = "Terima kasih telah menghubungi layanan Kementerian Investasi & Hilirisasi/BKPM!"
         elif collection_choice == "classified_information":
             basic_return = "Mohon maaf, pertanyaan tersebut melibatkan informasi konfidensial/rahasia. Silakan tanyakan pertanyaan lain."
-        
+
         print("Exiting handle_default_answering method")
         return_data = FinalResponse(
             conversation_id=ret_conversation_id,
@@ -312,11 +309,10 @@ class ChatflowHandler:
         cleaned_names = [n.rsplit(".", 1)[0] for n in unique_names]
 
         citation_str = ", ".join(cleaned_names)
-        answer = self.llm(req.query, reranked, ret_conversation_id, req.platform, status, helpdesk_active_status, collection_choice, citation_str)
-        # score = await self.evaluate(req.query, context, answer)
-
+        answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked, collection_choice=collection_choice, citation_str=citation_str)
+        question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
         print("Exiting handle_full_retrieval method")
-        return answer, citations
+        return answer, citations, question_id, answer_id
     
     async def handle_failed_answer_from_llm(self, req: ChatRequest, helpdesk_active_status: bool, ret_conversation_id: str, rewritten:str, initial_message: str, category: str, q_category: Tuple, answer: str, question_id: str, answer_id: str):
         print("Entering handle_failed_answer_from_llm method")
@@ -396,34 +392,34 @@ class ChatflowHandler:
             return await self.handle_default_answering(req=req, ret_conversation_id=ret_conversation_id, rewritten=rewritten, collection_choice=collection_choice)
         
         status = await self.repository.check_fail_history(ret_conversation_id)
+        question_id = 0
+        answer_id = 0
         is_faq=False
         faq_response = await self.retrieve_faq(rewritten)
 
         if faq_response["matched"]:
             citations = faq_response["citations"]
-            answer = self.llm(req.query, faq_response["faq_string"], ret_conversation_id, req.platform, status, helpdesk_active_status)
-            await self.repository.flag_message_is_answered(ret_conversation_id, req.query)
-            # score = await self.evaluate(req.query, context, answer)
+            answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=faq_response["faq_string"])
+            question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
+            await self.repository.flag_message_is_answered(question_id)
             is_faq=True
         else:
-            answer, citations = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
+            answer, citations, question_id, answer_id = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
 
-        await self.repository.ingest_start_timestamp(ret_conversation_id, start_timestamp)
-        category = await self.repository.ingest_category(ret_conversation_id, req.query, collection_choice)
+        await self.repository.ingest_start_timestamp(start_timestamp, question_id, answer_id)
+        category = await self.repository.ingest_category(question_id, collection_choice)
         question_classify = await self.question_classifier(rewritten)
         q_category = await self.repository.ingest_question_category(
-            ret_conversation_id, 
-            req.query,
+            question_id,
             question_classify.get("category"),
             question_classify.get("sub_category")
         )
-        question_id, answer_id = await self.repository.get_chat_history_id(ret_conversation_id, req.query)
         print("Exiting chatflow_call method")
 
         if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')) or (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
             return await self.handle_failed_answer_from_llm(req=req, helpdesk_active_status=helpdesk_active_status, ret_conversation_id=ret_conversation_id, rewritten=rewritten, initial_message=initial_message, category=category, q_category=q_category, answer=answer, question_id=question_id, answer_id=answer_id)
         
-        await self.repository.ingest_citations(citations, ret_conversation_id, req.query)
+        await self.repository.ingest_citations(citations, question_id)
 
         return_data = FinalResponse(
             conversation_id=ret_conversation_id,

@@ -7,8 +7,8 @@ class FinalResponse(BaseModel):
     category: str = ""
     question_category: Optional[Tuple[str, ...]] = None
     answer: str = ""
-    question_id: int = 0
-    answer_id: int = 0
+    question_id: Optional[int] = 0
+    answer_id: Optional[int] = 0
     citations: List = []
     is_helpdesk: bool = False
     is_answered: bool = False
