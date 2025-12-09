@@ -56,7 +56,7 @@ class ChatflowHandler:
         is_ask_helpdesk_conf = True
         is_helpdesk = False
         helpdesk_confirmation_answer = await self.llm_helpdesk_new(req.query, req.conversation_id)
-        question_id, _ = await self.repository.insert_skip_chat(req.conversation_id, req.query, helpdesk_confirmation_answer)
+        question_id, answer_id = await self.repository.insert_skip_chat(req.conversation_id, req.query, helpdesk_confirmation_answer)
         await self.repository.flag_message_is_answered(question_id)
         if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
             await self.repository.change_is_ask_helpdesk_status(req.conversation_id)
@@ -69,6 +69,7 @@ class ChatflowHandler:
             conversation_id=req.conversation_id,
             answer=helpdesk_confirmation_answer,
             question_id=question_id,
+            answer_id=answer_id,
             is_helpdesk=is_helpdesk,
             is_ask_helpdesk=is_ask_helpdesk_conf,
             is_answered=True,
