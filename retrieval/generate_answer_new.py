@@ -58,6 +58,8 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
 
     <user_query>
     {safe_query}
+    Tolong jawab dalam Bahasa Indonesia.
+    Anda harus jawab dalam Bahasa Indonesia
     </user_query>
     """
 
@@ -130,7 +132,7 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
         model=model_name,
         messages=[
             {"role": "system", "content": prompt},
-            {"role": "user", "content": user, "options": {"temperature": model_temperature, "repeat_penalty": 1.0, "top_k": 64, "top_p": 0.9, "num_ctx": 16000}}
+            {"role": "user", "content": user, "options": {"temperature": model_temperature, "repeat_penalty": 1.0, "top_k": 64, "top_p": 0.9, "num_ctx": 32000}}
         ]
     )
 
