@@ -2,6 +2,7 @@ from util.db_connection import get_pool
 import datetime
 import pytz
 import json
+import uuid
 
 class ChatflowRepository:
     def __init__(self):
@@ -419,8 +420,10 @@ class ChatflowRepository:
     async def insert_skip_chat(self, session_id: str, human_message: str, ai_message: str):
         print("Entering insert_skip_chat method")
 
+        ai_message_id = str(uuid.uuid4())
+
         human_dict = {"data": {"type": "human", "content": human_message}, "type": "human"}
-        ai_dict = {"data": {"type": "ai", "content": ai_message}, "type": "ai"}
+        ai_dict = {"data": {"id": ai_message_id, "type": "ai", "content": ai_message}, "type": "ai"}
 
         query="""
         INSERT INTO bkpm.chat_history (session_id, message)
