@@ -96,7 +96,7 @@ class ChatflowHandler:
     async def generate_helpdesk_routing_response(self, req: ChatRequest, ret_conversation_id: str, helpdesk_active_status: bool):
         print("Entering generate_helpdesk_routing_response method")
 
-        helpdesk_response = "Mohon maaf, untuk saat ini helpdesk agen layanan kami sedang tidak tersedia.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id"
+        helpdesk_response = "Mohon maaf, untuk saat ini helpdesk agen layanan kami sedang tidak tersedia.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id\n\n Bapak ibu juga bisa mengunjungi kantor BKPM yang beralamat di Jalan Gatot Subroto No.44 7, RT.7/RW.1, Senayan, Kecamatan Kebayoran Baru, Kota Jakarta Selatan.\n\nAtau mengunjungi kantor Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu (DPMPTSP) terdekat."
         if helpdesk_active_status:
             helpdesk_response = "Percakapan ini akan dihubungkan ke agen layanan."
 
@@ -164,7 +164,7 @@ class ChatflowHandler:
                     is_ask_helpdesk = True
                     basic_return = "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan kami. Apakah anda ingin dihubungkan ke helpdesk?"
                 else:
-                    basic_return = "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan kami. \nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id"
+                    basic_return = "Mohon maaf, untuk saat ini helpdesk agen layanan kami sedang tidak tersedia.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id\n\n Bapak ibu juga bisa mengunjungi kantor BKPM yang beralamat di Jalan Gatot Subroto No.44 7, RT.7/RW.1, Senayan, Kecamatan Kebayoran Baru, Kota Jakarta Selatan.\n\nAtau mengunjungi kantor Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu (DPMPTSP) terdekat."
             else:
                 basic_return = "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan kami. Silakan ajukan pertanyaan yang berkaitan dengan investasi, perizinan berusaha, atau layanan OSS agar saya dapat membantu dengan lebih tepat."
             return await self.handle_skip_collection_answer(req=req, ret_conversation_id=ret_conversation_id, rewritten=rewritten, message=basic_return, is_ask_helpdesk=is_ask_helpdesk)

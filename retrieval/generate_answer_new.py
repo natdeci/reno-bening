@@ -25,7 +25,7 @@ def get_fail_message(status: bool, helpdesk_active_status: bool) -> str:
         if helpdesk_active_status:
             return "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain. Untuk bantuan lebih lanjut, apakah anda ingin dihubungkan ke helpdesk agen layanan?"
         else:
-            return "Mohon maaf, pertanyaan tersebut belum bisa kami jawab. Silakan ajukan pertanyaan lain.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id"
+            return "Mohon maaf, untuk saat ini helpdesk agen layanan kami sedang tidak tersedia.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id\n\n Bapak ibu juga bisa mengunjungi kantor BKPM yang beralamat di Jalan Gatot Subroto No.44 7, RT.7/RW.1, Senayan, Kecamatan Kebayoran Baru, Kota Jakarta Selatan.\n\nAtau mengunjungi kantor Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu (DPMPTSP) terdekat."
     else:
         return "Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
 
@@ -58,8 +58,9 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
 
     <user_query>
     {safe_query}
+    Jangan sampai mengubah istilah-istilah berikut jika terkandung dalam jawabanmu: OSS, LKPM, NIB, KBLI, PB, PB-UMKU, AHU, RDTR
     Tolong jawab dalam Bahasa Indonesia.
-    Anda harus jawab dalam Bahasa Indonesia
+    Anda harus jawab dalam Bahasa Indonesia.
     </user_query>
     """
 
