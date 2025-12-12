@@ -140,7 +140,7 @@ def get_fail_message(status: bool, helpdesk_active_status: bool) -> str:
         else:
             return "Mohon maaf, untuk saat ini helpdesk agen layanan kami sedang tidak tersedia.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id\n\n Bapak ibu juga bisa mengunjungi kantor BKPM yang beralamat di Jalan Gatot Subroto No.44 7, RT.7/RW.1, Senayan, Kecamatan Kebayoran Baru, Kota Jakarta Selatan.\n\nAtau mengunjungi kantor Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu (DPMPTSP) terdekat."
     else:
-        return "Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
+        return "Mohon maaf, apakah Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
 
 def generate_answer(user_query: str, context_docs: list[str], conversation_id: str, platform: str, status: bool, helpdesk_active_status: bool, collection_choice: str | None = None, citation_str: str | None = None) -> str:
     print("Entering generate_answer method")

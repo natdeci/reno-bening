@@ -191,47 +191,50 @@ class ChatflowHandler:
 
     async def retrieve_faq(self, query_vector: str):
         print("[INFO] Entering retrieve_faq method")
+        
+        # docs = await self.retriever(rewritten, collection_choice)
+
+        # texts = []
+        # fileids = []
+        # filenames = []
+        # for d, s in docs:
+        #     texts.append(d.page_content)
+        #     meta = d.metadata
+        #     fileids.append(meta.get("file_id") or "unknown_source")
+        #     filenames.append(meta.get("filename") or "unknown_source")
+
+        # match = re.search(r"\bKBLI\s*\d{5}\b", query_vector, re.IGNORECASE)
+
+        # if match:
+        #     answer=texts[0] if texts else ""
+        #     citations = list(zip(fileids, filenames))
 
         results = await self.retriever_faq(query_vector, self.qdrant_faq_name, top_k=self.faq_limit)
         if not results:
             print("[INFO] No FAQ results found")
             return {"matched": False, "answer": None, "score": 0.0}
-        if results[0][1] < self.faq_threshold:
-            print(f"FAQ confidence is too low! Score: {results[0][1]}")
+        top_doc, top_score = results[0]
+        if top_score < self.faq_threshold:
+            print(f"FAQ confidence too low! Score: {top_score}")
             return {"matched": False, "answer": None, "citations": []}
   
-        faq_results = []
-        file_ids = []
-        file_names = []
-        for d,s in results:
-            score = s
-            question_text = d.page_content
-            metadata = d.metadata
-            file_id = metadata.get("file_id")
-            file_name = metadata.get("filename")
-            answer = metadata.get("answer", None)
-            if not file_id.startswith("faq-"):
-                if file_id not in file_ids:
-                    file_ids.append(file_id)
-                    file_names.append(file_name)
-            elif file_id.startswith("faq-"):
-                chat_id = int(file_id.split("-", 1)[1].strip())
-                answer = await self.repository.get_revision(chat_id)
-            print(f"{score}\n{question_text}\n{answer}")
-            faq_results.append((score,question_text,answer))
+        question_text = top_doc.page_content
+        metadata = top_doc.metadata
+        file_id = metadata.get("file_id")
+        file_name = metadata.get("filename")
+        answer = metadata.get("answer")
 
-        formatted = []
-        for score, question_text, answer in faq_results:
-            block = f"Q: {question_text}\nA: {answer}"
-            formatted.append(block)
+        if file_id.startswith("faq-"):
+            chat_id = int(file_id.split("-", 1)[1].strip())
+            answer = await self.repository.get_revision(chat_id)
 
-        citations = list(zip(file_ids, file_names))
+        citations = [(file_id, file_name)] if not file_id.startswith("faq-") else []
+        print(f"TOP-1 RESULT:\n{top_score}\n{question_text}\n{answer}")
 
-        result_string = "\n---\n".join(formatted)
         print("FAQ Matched!")
         return {
             "matched": True,
-            "faq_string": result_string,
+            "answer": answer,
             "citations": citations,
         }
     
@@ -290,27 +293,42 @@ class ChatflowHandler:
             fileids.append(meta.get("file_id") or "unknown_source")
             filenames.append(meta.get("filename") or "unknown_source")
 
-        texts, fileids, filenames = await self.get_filtered_chunks(rewritten=rewritten, context=context, texts=texts, fileids=fileids, filenames=filenames)
+        
+        match = re.search(r"\bKBLI\s*\d{5}\b", rewritten, re.IGNORECASE)
 
-        print(fileids)
-        print(filenames)
-        reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
+        if match:
+            answer=texts[0] if texts else ""
+            print("answer kbli\n", answer)
+            citations = list(zip(fileids, filenames))
+        else:
 
-        print("===RERANKED===")
-        for r in reranked:
-            print(r)
-        print("==============")
+            texts, fileids, filenames = await self.get_filtered_chunks(rewritten=rewritten, context=context, texts=texts, fileids=fileids, filenames=filenames)
 
-        citations = list(zip(citation_id, citation_name))
-        unique_names = []
-        for name in citation_name:
-            if name not in unique_names:
-                unique_names.append(name)
+            # print(fileids)
+            # print(filenames)
+            reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
 
-        cleaned_names = [n.rsplit(".", 1)[0] for n in unique_names]
+            # print("===RERANKED===")
+            # for r in reranked:
+            #     print(r)
+            # print("==============")
 
-        citation_str = ", ".join(cleaned_names)
-        answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked, collection_choice=collection_choice, citation_str=citation_str)
+            transformed_chunk = []
+
+            if collection_choice == 'peraturan_collection':
+                for cname, chunk in zip(citation_name, reranked):
+                    clean_name = cname.rsplit(".", 1)[0]
+                    transformed = f"Menurut {clean_name}, {chunk}"
+                    transformed_chunk.append(transformed)
+
+                reranked=transformed_chunk
+
+            # print("Transformed chunks: \n", transformed_chunk)
+
+            citations = list(zip(citation_id, citation_name))
+
+            answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
+
         question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
         print("Exiting handle_full_retrieval method")
         return answer, citations, question_id, answer_id
@@ -400,7 +418,7 @@ class ChatflowHandler:
 
         if faq_response["matched"]:
             citations = faq_response["citations"]
-            answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=faq_response["faq_string"])
+            answer = faq_response["answer"]
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
             await self.repository.flag_message_is_answered(question_id)
             is_faq=True
@@ -417,7 +435,7 @@ class ChatflowHandler:
         )
         print("Exiting chatflow_call method")
 
-        if(answer.startswith('Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi.')) or (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
+        if(answer.startswith('Mohon maaf, apakah Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?')) or (answer.startswith('Mohon maaf, pertanyaan tersebut belum bisa kami jawab.')):
             return await self.handle_failed_answer_from_llm(req=req, helpdesk_active_status=helpdesk_active_status, ret_conversation_id=ret_conversation_id, rewritten=rewritten, initial_message=initial_message, category=category, q_category=q_category, answer=answer, question_id=question_id, answer_id=answer_id)
         
         await self.repository.ingest_citations(citations, question_id)
@@ -427,7 +445,7 @@ class ChatflowHandler:
             rewritten_query=rewritten,
             category=category,
             question_category=q_category,
-            answer=(initial_message or "") + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
+            answer=(initial_message or "") + answer + "\n\n*Jawaban ini dibuat oleh AI dan tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
             question_id=question_id,
             answer_id=answer_id,
             citations=citations,

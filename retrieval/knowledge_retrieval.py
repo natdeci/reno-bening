@@ -3,7 +3,7 @@ import requests
 from dotenv import load_dotenv
 import asyncio
 from typing import List, Iterable
-
+import re
 from langchain_ollama import OllamaEmbeddings
 from langchain_qdrant import QdrantVectorStore, RetrievalMode
 from qdrant_client.models import SparseVector
@@ -18,6 +18,17 @@ embedding_model = OllamaEmbeddings(
     model=os.getenv("EMBED_MODEL"),
     base_url=os.getenv("OLLAMA_BASE_URL")
 )
+def extract_kbli(query: str):
+    match = re.search(r'\b\d{5}\b', query)
+    return match.group(0) if match else None
+
+def build_kbli_filter(kbli_code: str):
+    return {
+        "must": [
+            {"key": "page_content", "match": {"text": "Ruang Lingkup"}},
+            {"key": "page_content", "match": {"text": f"Kode: KBLI {kbli_code}"}}
+        ]
+    }
 
 class BM25SparseEmbeddings:
     def __init__(self, bm25_url: str):
@@ -67,6 +78,8 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
     print("Entering retrieve_knowledge method")
     print(f"Collection: {collection_name}")
 
+    kbli_code = extract_kbli(user_query)
+
     loop = asyncio.get_event_loop()
 
     def sync_search():
@@ -80,14 +93,24 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
             sparse_vector_name="sparse",
         )
 
-        return vectorstore.similarity_search_with_score(
-            query=user_query,
-            k=top_k,
-        )
+        if kbli_code:
+            filter_body = build_kbli_filter(kbli_code)
+            return vectorstore.similarity_search_with_score(
+                query=user_query,
+                k=top_k,
+                filter=filter_body
+            )
+        else:
+            return vectorstore.similarity_search_with_score(
+                query=user_query,
+                k=top_k
+            )
 
     results = await loop.run_in_executor(None, sync_search)
+    print(results)
     print("Exiting retrieve_knowledge method")
     return results
+
 
 async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: int = TOP_K):
     print("Entering retrieve_knowledge_faq method")

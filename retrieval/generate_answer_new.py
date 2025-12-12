@@ -27,14 +27,10 @@ def get_fail_message(status: bool, helpdesk_active_status: bool) -> str:
         else:
             return "Mohon maaf, untuk saat ini helpdesk agen layanan kami sedang tidak tersedia.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id\n\n Bapak ibu juga bisa mengunjungi kantor BKPM yang beralamat di Jalan Gatot Subroto No.44 7, RT.7/RW.1, Senayan, Kecamatan Kebayoran Baru, Kota Jakarta Selatan.\n\nAtau mengunjungi kantor Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu (DPMPTSP) terdekat."
     else:
-        return "Mohon maaf, saya hanya dapat membantu terkait informasi perizinan usaha, regulasi, dan investasi. Mungkin Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
+        return "Mohon maaf, apakah Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
 
-async def generate_answer_new(user_query: str, history_context: str, platform: str, status: bool, helpdesk_active_status: bool, context_docs: list[str], collection_choice: str | None = None, citation_str: str | None = None) -> str:
+async def generate_answer_new(user_query: str, history_context: str, platform: str, status: bool, helpdesk_active_status: bool, context_docs: list[str]) -> str:
     print("Entering generate_answer_new method")
-
-    citation_prefix = ""
-    if collection_choice == "peraturan_collection":
-        citation_prefix = f"Menurut {citation_str},"
 
     context = "\n\n".join(context_docs)
 
@@ -51,10 +47,6 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
     DO NOT MODIFY
     {context}
     </retrieval_results>
-
-    <citation_prefix>
-    {citation_prefix}
-    </citation_prefix>
 
     <user_query>
     {safe_query}
@@ -89,6 +81,7 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
     - If the retrieval results includes numerical thresholds, definitions, or legal limits relevant to the question, use those first.
     - If a general answer in the retrieval results fits, provide it directly.
     - If some details are missing but the main answer is clear, give it and briefly note the limitation.
+    - If the retrieval result contains official opening phrase such as "Menurut ...,"", then the answer MUST begin with the exact same opening phrase from the selected retrieval. It cannot be summarized, It cannot be abbreviated, Capitalization must be the same, The text used must come from the selected retrieval, not from outside sources.
 
     2. Use General Answer as Backup (Domain-Limited):
     - You are a government assistant specialized ONLY in indonesian business and investment information.
