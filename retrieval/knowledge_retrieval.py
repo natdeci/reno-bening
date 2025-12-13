@@ -18,6 +18,13 @@ embedding_model = OllamaEmbeddings(
     model=os.getenv("EMBED_MODEL"),
     base_url=os.getenv("OLLAMA_BASE_URL")
 )
+
+def is_kbli_query(text: str) -> bool:
+    return bool(
+        re.search(r"\bKBLI\b", text, re.IGNORECASE)
+        and re.search(r"\b\d{5}\b", text)
+    )
+
 def extract_kbli(query: str):
     match = re.search(r'\b\d{5}\b', query)
     return match.group(0) if match else None
@@ -78,7 +85,9 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
     print("Entering retrieve_knowledge method")
     print(f"Collection: {collection_name}")
 
+    is_kbli = is_kbli_query(user_query)
     kbli_code = extract_kbli(user_query)
+
     loop = asyncio.get_event_loop()
 
     def sync_search():
@@ -92,7 +101,7 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
             sparse_vector_name="sparse",
         )
 
-        if kbli_code:
+        if is_kbli and kbli_code:
             filter_body = build_kbli_filter(kbli_code)
             results = vectorstore.similarity_search_with_score(
                 query=user_query,
@@ -116,11 +125,18 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
     results = await loop.run_in_executor(None, sync_search)
     print(results)
     print("Exiting retrieve_knowledge method")
-    return results
+    return {
+        "docs": results,
+        "is_kbli": is_kbli,
+    }
 
 async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: int = TOP_K):
     print("Entering retrieve_knowledge_faq method")
     print(f"Collection: {collection_name}")
+
+    if is_kbli_query(user_query):
+        print("[INFO] KBLI query detected, skip FAQ retrieval")
+        return []
 
     loop = asyncio.get_event_loop()
 

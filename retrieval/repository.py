@@ -447,3 +447,20 @@ class ChatflowRepository:
         else:
             print("Warning: Failed to retrieve both IDs after insertion.")
             return 0, 0
+        
+    async def get_human_messages(self, session_id: str) -> set[str]:
+        print("Entering get_human_messages method")
+
+        query = """
+        SELECT message -> 'data' ->> 'content' AS content
+        FROM bkpm.chat_history
+        WHERE session_id = $1
+        AND message ->> 'type' = 'human'
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, session_id)
+
+        print("Exiting get_human_messages method")
+        return [row["content"] for row in rows]

@@ -26,6 +26,7 @@ class ChatflowHandler:
         self.qdrant_faq_name = os.getenv("QNA_COLLECTION")
         self.faq_limit = 3
         self.faq_threshold = 0.75
+        self.max_retry = 3
         self.tz = pytz.timezone("Asia/Jakarta")
         self.llm_helpdesk_new = generate_helpdesk_confirmation_answer_new
         self.rewriter = rewrite_query
@@ -190,24 +191,7 @@ class ChatflowHandler:
             data=return_data)
 
     async def retrieve_faq(self, query_vector: str):
-        print("[INFO] Entering retrieve_faq method")
-        
-        # docs = await self.retriever(rewritten, collection_choice)
-
-        # texts = []
-        # fileids = []
-        # filenames = []
-        # for d, s in docs:
-        #     texts.append(d.page_content)
-        #     meta = d.metadata
-        #     fileids.append(meta.get("file_id") or "unknown_source")
-        #     filenames.append(meta.get("filename") or "unknown_source")
-
-        # match = re.search(r"\bKBLI\s*\d{5}\b", query_vector, re.IGNORECASE)
-
-        # if match:
-        #     answer=texts[0] if texts else ""
-        #     citations = list(zip(fileids, filenames))
+        print("[INFO] Entering retrieve_faq method")        
 
         results = await self.retriever_faq(query_vector, self.qdrant_faq_name, top_k=self.faq_limit)
         if not results:
@@ -279,10 +263,51 @@ class ChatflowHandler:
         print("Exiting get_filtered_chunks method with no removal")
         return texts, fileids, filenames
     
+    def extract_kbli_code(self, text: str) -> list[str]:
+        return re.findall(r"\b\d{5}\b", text)
+
+    def is_repeating_answer(self, answer: str, min_repeat: int = 5) -> bool:
+        words = re.findall(r"\b\w+\b", answer.lower())
+
+        if len(words) < min_repeat:
+            return False
+
+        current_word = None
+        streak = 0
+
+        for word in words:
+            if word == current_word:
+                streak += 1
+                if streak >= min_repeat:
+                    return True
+            else:
+                current_word = word
+                streak = 1
+
+        return False
+    
     async def handle_full_retrieval(self, req:ChatRequest, ret_conversation_id: str, status: bool, helpdesk_active_status: bool, context: str, rewritten: str, collection_choice: str):
         print("Entering handle_full_retrieval method")
 
-        docs = await self.retriever(rewritten, collection_choice)
+        retrieval = await self.retriever(rewritten, collection_choice)
+        docs = retrieval["docs"]
+        is_kbli_5_digit = retrieval["is_kbli"]
+
+        if is_kbli_5_digit:
+            current_kbli_codes = self.extract_kbli_code(rewritten)
+            if current_kbli_codes:
+                human_messages = await self.repository.get_human_messages(ret_conversation_id)
+                asked_kbli_codes = set()
+
+                for msg in human_messages:
+                    asked_kbli_codes.update(self.extract_kbli_code(msg))
+
+                print(f"KBLI code that have been asked in session id: {ret_conversation_id}")
+                print(asked_kbli_codes)
+
+                if all(code in asked_kbli_codes for code in current_kbli_codes):
+                    is_kbli_5_digit = False
+                    print(f"KBLI {current_kbli_codes} has already been asked")
 
         texts = []
         fileids = []
@@ -293,15 +318,11 @@ class ChatflowHandler:
             fileids.append(meta.get("file_id") or "unknown_source")
             filenames.append(meta.get("filename") or "unknown_source")
 
-        
-        match = re.search(r"\bKBLI\s*\d{5}\b", rewritten, re.IGNORECASE)
-
-        if match:
-            answer=texts[0] if texts else ""
-            print("answer kbli\n", answer)
+        if is_kbli_5_digit:
+            answer = texts[0] if texts else ""
             citations = list(zip(fileids, filenames))
-        else:
 
+        else:
             texts, fileids, filenames = await self.get_filtered_chunks(rewritten=rewritten, context=context, texts=texts, fileids=fileids, filenames=filenames)
 
             # print(fileids)
@@ -315,20 +336,33 @@ class ChatflowHandler:
 
             transformed_chunk = []
 
+            print("Transformed chunks:")
             if collection_choice == 'peraturan_collection':
                 for cname, chunk in zip(citation_name, reranked):
                     clean_name = cname.rsplit(".", 1)[0]
                     transformed = f"Menurut {clean_name}, {chunk}"
+                    print(transformed)
                     transformed_chunk.append(transformed)
 
                 reranked=transformed_chunk
 
-            # print("Transformed chunks: \n", transformed_chunk)
 
             citations = list(zip(citation_id, citation_name))
+            
+            retry_count = 1
+            answer = "dan ini dan itu dan ini dan itu dan ini dan itu itu itu itu itu"
 
-            answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
+            while retry_count < self.max_retry:
+                answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
+                if not self.is_repeating_answer(answer):
+                    break
+                print(f"[WARN] Repeating answer detected (retry {retry_count + 1}/{self.max_retry})")
+                retry_count += 1
 
+            if self.is_repeating_answer(answer):
+                print("[ERROR] Repeating answer persists, using fallback template")
+                answer = "Mohon maaf, saat ini sedang terjadi kendala pada sistem kami. Silakan coba kembali beberapa saat lagi."
+            
         question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
         print("Exiting handle_full_retrieval method")
         return answer, citations, question_id, answer_id
