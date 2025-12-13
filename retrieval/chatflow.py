@@ -166,7 +166,7 @@ class ChatflowHandler:
                 else:
                     basic_return = "Mohon maaf, untuk saat ini helpdesk agen layanan kami sedang tidak tersedia.\nBapak/Ibu bisa ajukan pertanyaan dengan mengirim email ke kontak@oss.go.id\n\n Bapak ibu juga bisa mengunjungi kantor BKPM yang beralamat di Jalan Gatot Subroto No.44 7, RT.7/RW.1, Senayan, Kecamatan Kebayoran Baru, Kota Jakarta Selatan.\n\nAtau mengunjungi kantor Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu (DPMPTSP) terdekat."
             else:
-                basic_return = "Mohon maaf, pertanyaan tersebut berada di luar cakupan layanan kami. Silakan ajukan pertanyaan yang berkaitan dengan investasi, perizinan berusaha, atau layanan OSS agar saya dapat membantu dengan lebih tepat."
+                basic_return = "Mohon maaf, pertanyaan yang disampaikan tersebut di luar cakupan layanan kami. Silakan ajukan pertanyaan yang berkaitan dengan investasi, perizinan berusaha, atau layanan OSS agar saya dapat membantu dengan lebih tepat."
             return await self.handle_skip_collection_answer(req=req, ret_conversation_id=ret_conversation_id, rewritten=rewritten, message=basic_return, is_ask_helpdesk=is_ask_helpdesk)
         elif collection_choice == "greeting_query":
             basic_return = "Halo! Selamat datang di layanan Kementerian Investasi & Hilirisasi/BKPM, apakah ada yang bisa saya bantu?"
@@ -445,7 +445,7 @@ class ChatflowHandler:
             rewritten_query=rewritten,
             category=category,
             question_category=q_category,
-            answer=(initial_message or "") + answer + "\n\n*Jawaban ini dibuat oleh AI dan tidak selalu akurat. Mohon gunakan sebagai referensi dan lakukan pengecekan tambahan bila diperlukan.*",
+            answer=(initial_message or "") + answer + "\n\n*Jawaban ini dibuat oleh AI dan mungkin tidak selalu akurat. Jawaban ini juga tidak bisa dijadikan sebagai referensi pendapat hukum. Mohon lakukan pengecekan tambahan atau lebih detil bila diperlukan.*",
             question_id=question_id,
             answer_id=answer_id,
             citations=citations,
