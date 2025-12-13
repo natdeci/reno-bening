@@ -79,7 +79,6 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
     print(f"Collection: {collection_name}")
 
     kbli_code = extract_kbli(user_query)
-
     loop = asyncio.get_event_loop()
 
     def sync_search():
@@ -95,22 +94,29 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
 
         if kbli_code:
             filter_body = build_kbli_filter(kbli_code)
-            return vectorstore.similarity_search_with_score(
+            results = vectorstore.similarity_search_with_score(
                 query=user_query,
                 k=top_k,
                 filter=filter_body
             )
         else:
-            return vectorstore.similarity_search_with_score(
+            results = vectorstore.similarity_search_with_score(
                 query=user_query,
                 k=top_k
             )
+
+        if collection_name == "peraturan_collection":
+            results = [
+                (doc, score) for doc, score in results
+                if "Cukup jelas." not in doc.page_content
+            ]
+
+        return results
 
     results = await loop.run_in_executor(None, sync_search)
     print(results)
     print("Exiting retrieve_knowledge method")
     return results
-
 
 async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: int = TOP_K):
     print("Entering retrieve_knowledge_faq method")
