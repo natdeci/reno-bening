@@ -294,8 +294,8 @@ class ChatflowHandler:
         is_kbli_5_digit = retrieval["is_kbli"]
 
         if is_kbli_5_digit:
-            current_kbli_codes = self.extract_kbli_code(rewritten)
-            if current_kbli_codes:
+            current_kbli_code = self.extract_kbli_code(rewritten)
+            if current_kbli_code:
                 human_messages = await self.repository.get_human_messages(ret_conversation_id)
                 asked_kbli_codes = set()
 
@@ -305,9 +305,9 @@ class ChatflowHandler:
                 print(f"KBLI code that have been asked in session id: {ret_conversation_id}")
                 print(asked_kbli_codes)
 
-                if all(code in asked_kbli_codes for code in current_kbli_codes):
+                if all(code in asked_kbli_codes for code in current_kbli_code):
                     is_kbli_5_digit = False
-                    print(f"KBLI {current_kbli_codes} has already been asked")
+                    print(f"KBLI {current_kbli_code} has already been asked")
 
         texts = []
         fileids = []
@@ -319,7 +319,7 @@ class ChatflowHandler:
             filenames.append(meta.get("filename") or "unknown_source")
 
         if is_kbli_5_digit:
-            answer = texts[0] if texts else ""
+            answer = texts[0] if texts else f"Informasi untuk kode KBLI tersebut tidak ditemukan. Pastikan kode yang dimasukkan sudah benar atau coba kode KBLI lainnya."
             citations = list(zip(fileids, filenames))
 
         else:
@@ -349,17 +349,24 @@ class ChatflowHandler:
 
             citations = list(zip(citation_id, citation_name))
             
-            retry_count = 1
+            retry_count = 0
             answer = ""
 
             while retry_count < self.max_retry:
                 answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
-                if not self.is_repeating_answer(answer):
-                    break
-                print(f"[WARN] Repeating answer detected (retry {retry_count + 1}/{self.max_retry})")
-                retry_count += 1
+                if not answer or not answer.strip(): # if answer "", " ", or None, means LLM error, timeout, etc
+                    print(f"[WARN] Empty answer (retry {retry_count}/{self.max_retry})")
+                    retry_count += 1
+                    continue
 
-            if self.is_repeating_answer(answer):
+                if self.is_repeating_answer(answer):
+                    print(f"[WARN] Repeating answer (retry {retry_count}/{self.max_retry})")
+                    retry_count += 1
+                    continue
+
+                break
+
+            if not answer or self.is_repeating_answer(answer):
                 print("[ERROR] Repeating answer persists, using fallback template")
                 answer = "Mohon maaf, saat ini sedang terjadi kendala pada sistem kami. Silakan coba kembali beberapa saat lagi."
             
