@@ -350,7 +350,7 @@ class ChatflowHandler:
             citations = list(zip(citation_id, citation_name))
             
             retry_count = 1
-            answer = "dan ini dan itu dan ini dan itu dan ini dan itu itu itu itu itu"
+            answer = ""
 
             while retry_count < self.max_retry:
                 answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
