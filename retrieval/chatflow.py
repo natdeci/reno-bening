@@ -318,6 +318,7 @@ class ChatflowHandler:
             fileids.append(meta.get("file_id") or "unknown_source")
             filenames.append(meta.get("filename") or "unknown_source")
 
+        print("Flow KBLI 5 Digit: ", is_kbli_5_digit)
         if is_kbli_5_digit:
             answer = texts[0] if texts else f"Informasi untuk kode KBLI tersebut tidak ditemukan. Pastikan kode yang dimasukkan sudah benar atau coba kode KBLI lainnya."
             citations = list(zip(fileids, filenames))

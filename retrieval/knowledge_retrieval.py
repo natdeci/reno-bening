@@ -20,10 +20,12 @@ embedding_model = OllamaEmbeddings(
 )
 
 def is_kbli_query(text: str) -> bool:
+    kbli_codes = re.findall(r'\b\d{5}\b', text)
     return bool(
         re.search(r"\bKBLI\b", text, re.IGNORECASE)
-        and re.search(r"\b\d{5}\b", text)
+        and len(kbli_codes) == 1
     )
+
 
 def extract_kbli(query: str):
     match = re.search(r'\b\d{5}\b', query)
