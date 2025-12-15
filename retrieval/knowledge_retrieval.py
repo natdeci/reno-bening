@@ -2,6 +2,7 @@ import os
 import requests
 from dotenv import load_dotenv
 import asyncio
+import time
 from typing import List, Iterable
 import re
 from langchain_ollama import OllamaEmbeddings
@@ -123,14 +124,17 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
             ]
 
         return results
-
+    
+    start = time.perf_counter()
     results = await loop.run_in_executor(None, sync_search)
+    end = time.perf_counter()
+    duration = end - start
     print(results)
     print("Exiting retrieve_knowledge method")
     return {
         "docs": results,
         "is_kbli": is_kbli,
-    }
+    }, duration
 
 async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: int = TOP_K):
     print("Entering retrieve_knowledge_faq method")
@@ -156,6 +160,10 @@ async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: i
             k=top_k,
         )
 
+    start = time.perf_counter()
     results = await loop.run_in_executor(None, sync_search)
+    end = time.perf_counter()
+    duration = end - start
+    print(duration)
     print("Exiting retrieve_knowledge_faq method")
-    return results
+    return results, duration

@@ -1,6 +1,7 @@
 import os
 import re
 import uuid
+import time
 from datetime import datetime
 import pytz
 from dotenv import load_dotenv
@@ -193,14 +194,14 @@ class ChatflowHandler:
     async def retrieve_faq(self, query_vector: str):
         print("[INFO] Entering retrieve_faq method")        
 
-        results = await self.retriever_faq(query_vector, self.qdrant_faq_name, top_k=self.faq_limit)
+        results, duration = await self.retriever_faq(query_vector, self.qdrant_faq_name, top_k=self.faq_limit)
         if not results:
             print("[INFO] No FAQ results found")
-            return {"matched": False, "answer": None, "score": 0.0}
+            return {"matched": False, "answer": None, "score": 0.0}, duration
         top_doc, top_score = results[0]
         if top_score < self.faq_threshold:
             print(f"FAQ confidence too low! Score: {top_score}")
-            return {"matched": False, "answer": None, "citations": []}
+            return {"matched": False, "answer": None, "citations": []}, duration
   
         question_text = top_doc.page_content
         metadata = top_doc.metadata
@@ -220,7 +221,7 @@ class ChatflowHandler:
             "matched": True,
             "answer": answer,
             "citations": citations,
-        }
+        }, duration
     
     async def get_filtered_chunks(self, rewritten: str, context: str, texts: list[str], fileids: list[str], filenames: list[str]):
         print("Entering get_filtered_chunks method")
@@ -289,7 +290,7 @@ class ChatflowHandler:
     async def handle_full_retrieval(self, req:ChatRequest, ret_conversation_id: str, status: bool, helpdesk_active_status: bool, context: str, rewritten: str, collection_choice: str):
         print("Entering handle_full_retrieval method")
 
-        retrieval = await self.retriever(rewritten, collection_choice)
+        retrieval, duration = await self.retriever(rewritten, collection_choice)
         docs = retrieval["docs"]
         is_kbli_5_digit = retrieval["is_kbli"]
 
@@ -328,8 +329,7 @@ class ChatflowHandler:
 
             # print(fileids)
             # print(filenames)
-            reranked, citation_id, citation_name = await self.rerank_new(rewritten, texts, fileids, filenames)
-
+            reranked, citation_id, citation_name, duration_rerank = await self.rerank_new(rewritten, texts, fileids, filenames)
             # print("===RERANKED===")
             # for r in reranked:
             #     print(r)
@@ -354,7 +354,8 @@ class ChatflowHandler:
             answer = ""
 
             while retry_count < self.max_retry:
-                answer = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
+                answer, duration_llm = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
+
                 if not answer or not answer.strip(): # if answer "", " ", or None, means LLM error, timeout, etc
                     print(f"[WARN] Empty answer (retry {retry_count}/{self.max_retry})")
                     retry_count += 1
@@ -373,7 +374,7 @@ class ChatflowHandler:
             
         question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
         print("Exiting handle_full_retrieval method")
-        return answer, citations, question_id, answer_id
+        return answer, citations, question_id, answer_id, duration, duration_rerank, duration_llm
     
     async def handle_failed_answer_from_llm(self, req: ChatRequest, helpdesk_active_status: bool, ret_conversation_id: str, rewritten:str, initial_message: str, category: str, q_category: Tuple, answer: str, question_id: str, answer_id: str):
         print("Entering handle_failed_answer_from_llm method")
@@ -456,7 +457,11 @@ class ChatflowHandler:
         question_id = 0
         answer_id = 0
         is_faq=False
-        faq_response = await self.retrieve_faq(rewritten)
+        qdrant_duration_1 = 0
+        qdrant_duration_2 = 0
+        rerank_duration = 0
+        llm_duration = 0
+        faq_response, qdrant_duration_1 = await self.retrieve_faq(rewritten)
 
         if faq_response["matched"]:
             citations = faq_response["citations"]
@@ -465,11 +470,12 @@ class ChatflowHandler:
             await self.repository.flag_message_is_answered(question_id)
             is_faq=True
         else:
-            answer, citations, question_id, answer_id = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
+            answer, citations, question_id, answer_id, qdrant_duration_2, rerank_duration, llm_duration = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
 
         await self.repository.ingest_start_timestamp(start_timestamp, question_id, answer_id)
         category = await self.repository.ingest_category(question_id, collection_choice)
         question_classify = await self.question_classifier(rewritten)
+        await self.repository.insert_durations(question_id, answer_id, qdrant_duration_1, qdrant_duration_2, rerank_duration, llm_duration)
         q_category = await self.repository.ingest_question_category(
             question_id,
             question_classify.get("category"),

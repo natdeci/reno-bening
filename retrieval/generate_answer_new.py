@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from dotenv import load_dotenv
 from util.async_ollama import ollama_chat_async
 from util.sanitize_input import sanitize_input
@@ -121,6 +122,7 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
     </output>
     """
 
+    start = time.perf_counter()
     response = await ollama_chat_async(
         model=model_name,
         messages=[
@@ -128,10 +130,12 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
             {"role": "user", "content": user, "options": {"temperature": model_temperature, "repeat_penalty": 1.0, "top_k": 64, "top_p": 0.9, "num_ctx": 32000}}
         ]
     )
+    end = time.perf_counter()
+    duration = end - start
 
     return_response = response["message"]["content"].strip()
     if platform.lower() in ["instagram", "email", "whatsapp"]:
         return cleanse_llm_response(text=return_response)
 
     print("Exiting generate_answer_new method")
-    return return_response
+    return return_response, duration

@@ -464,3 +464,18 @@ class ChatflowRepository:
 
         print("Exiting get_human_messages method")
         return [row["content"] for row in rows]
+    
+    async def insert_durations(self, question_id: int, answer_id: int, qdrant_duration_1: float, qdrant_duration_2: float, rerank_duration: float, llm_duration: float):
+        print("Entering insert_durations method")
+
+        query = """
+        INSERT INTO bkpm.run_times (question_id, answer_id, qdrant_faq_time, qdrant_main_time, rerank_time, llm_time)
+        VALUES
+        ($1, $2, $3, $4, $5, $6);
+        """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(query, question_id, answer_id, qdrant_duration_1, qdrant_duration_2, rerank_duration, llm_duration)
+
+        print("Exiting insert_durations method")
