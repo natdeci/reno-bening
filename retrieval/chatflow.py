@@ -290,6 +290,9 @@ class ChatflowHandler:
     async def handle_full_retrieval(self, req:ChatRequest, ret_conversation_id: str, status: bool, helpdesk_active_status: bool, context: str, rewritten: str, collection_choice: str):
         print("Entering handle_full_retrieval method")
 
+        duration = 0
+        duration_rerank = 0
+        duration_llm = 0
         retrieval, duration = await self.retriever(rewritten, collection_choice)
         docs = retrieval["docs"]
         is_kbli_5_digit = retrieval["is_kbli"]

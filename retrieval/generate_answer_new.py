@@ -135,7 +135,7 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
 
     return_response = response["message"]["content"].strip()
     if platform.lower() in ["instagram", "email", "whatsapp"]:
-        return cleanse_llm_response(text=return_response)
+        return cleanse_llm_response(text=return_response), duration
 
     print("Exiting generate_answer_new method")
     return return_response, duration

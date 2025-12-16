@@ -142,7 +142,7 @@ async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: i
 
     if is_kbli_query(user_query):
         print("[INFO] KBLI query detected, skip FAQ retrieval")
-        return []
+        return [], 0
 
     loop = asyncio.get_event_loop()
 
