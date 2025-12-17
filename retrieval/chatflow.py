@@ -329,15 +329,7 @@ class ChatflowHandler:
 
         else:
             texts, fileids, filenames = await self.get_filtered_chunks(rewritten=rewritten, context=context, texts=texts, fileids=fileids, filenames=filenames)
-
-            # print(fileids)
-            # print(filenames)
             reranked, citation_id, citation_name, duration_rerank = await self.rerank_new(rewritten, texts, fileids, filenames)
-            # print("===RERANKED===")
-            # for r in reranked:
-            #     print(r)
-            # print("==============")
-
             transformed_chunk = []
 
             print("Transformed chunks:")

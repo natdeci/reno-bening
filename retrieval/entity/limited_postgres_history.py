@@ -10,7 +10,7 @@ class LimitedPostgresHistory(PostgresChatMessageHistory):
         """Return only the last N messages."""
         all_msgs = super().messages
         limited = all_msgs[-self.max_messages:]
-        print("=====")
-        print(limited)
-        print("=====")
+        # print("=====")
+        # print(limited)
+        # print("=====")
         return limited

@@ -129,7 +129,7 @@ async def retrieve_knowledge(user_query: str, collection_name: str, top_k: int =
     results = await loop.run_in_executor(None, sync_search)
     end = time.perf_counter()
     duration = end - start
-    print(results)
+    # print(results)
     print("Exiting retrieve_knowledge method")
     return {
         "docs": results,
@@ -164,6 +164,6 @@ async def retrieve_knowledge_faq(user_query: str, collection_name: str, top_k: i
     results = await loop.run_in_executor(None, sync_search)
     end = time.perf_counter()
     duration = end - start
-    print(duration)
+    # print(duration)
     print("Exiting retrieve_knowledge_faq method")
     return results, duration

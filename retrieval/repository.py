@@ -63,7 +63,7 @@ class ChatflowRepository:
             """
             context_parts.append(block)
         history_string = "\n".join(context_parts)
-        print(history_string.strip())
+        # print(history_string.strip())
         print("Conversation context retrieved!")
         return history_string.strip()
     
