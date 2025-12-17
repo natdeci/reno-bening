@@ -469,9 +469,9 @@ class ChatflowRepository:
         print("Entering insert_durations method")
 
         query = """
-        INSERT INTO bkpm.run_times (question_id, answer_id, qdrant_faq_time, qdrant_main_time, rerank_time, llm_time)
+        INSERT INTO bkpm.run_times (dttm, question_id, answer_id, qdrant_faq_time, qdrant_main_time, rerank_time, llm_time)
         VALUES
-        ($1, $2, $3, $4, $5, $6);
+        (NOW(), $1, $2, $3, $4, $5, $6);
         """
 
         pool = await get_pool()

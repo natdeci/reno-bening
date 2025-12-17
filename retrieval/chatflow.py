@@ -496,7 +496,7 @@ class ChatflowHandler:
             rewritten_query=rewritten,
             category=category,
             question_category=q_category,
-            answer=(initial_message or "") + answer + "\n\n*Jawaban ini dibuat oleh AI dan tidak selalu akurat. Jawaban ini juga tidak bisa dijadikan sebagai referensi pendapat hukum. Mohon lakukan pengecekan tambahan atau lebih detil bila diperlukan.*",
+            answer=(initial_message or "") + answer + "\n\n*Jawaban dibuat oleh AI, bukan sebagai referensi pendapat hukum dan tidak selalu akurat. Mohon lakukan pengecekan tambahan atau lebih detil bila diperlukan.*",
             question_id=question_id,
             answer_id=answer_id,
             citations=citations,
