@@ -225,10 +225,18 @@ class ChatflowHandler:
     
     async def get_filtered_chunks(self, rewritten: str, context: str, texts: list[str], fileids: list[str], filenames: list[str]):
         print("Entering get_filtered_chunks method")
+        duration_classify_kbli = 0
+        duration_classify_specific = 0
+        start_classifiy_kbli = time.perf_counter()
         kbli_status = await self.classify_kbli(rewritten, context)
+        end_classify_kbli = time.perf_counter()
+        duration_classify_kbli = end_classify_kbli - start_classifiy_kbli
         print("kbli status: " + kbli_status)
         if kbli_status == "kbli":
+            start_classify_specific = time.perf_counter()
             specific_status = await self.classify_specific(rewritten, context)
+            end_classify_specific = time.perf_counter()
+            duration_classify_specific = end_classify_specific - start_classify_specific
             print("specific status: " + specific_status)
             if specific_status == "general":
                 kbli_pattern = re.compile(r"kode[:\s]*kbli[:\s]*(\d{1,5})", re.IGNORECASE)
@@ -259,10 +267,10 @@ class ChatflowHandler:
 
                 print(f"KBLIs: {seen_kbli}")
                 print("Exiting get_filtered_chunks method with no removal")
-                return filtered_texts, filtered_fileids, filtered_filenames
+                return filtered_texts, filtered_fileids, filtered_filenames, duration_classify_kbli, duration_classify_specific
 
         print("Exiting get_filtered_chunks method with no removal")
-        return texts, fileids, filenames
+        return texts, fileids, filenames, duration_classify_kbli, duration_classify_specific
     
     def extract_kbli_code(self, text: str) -> list[str]:
         return re.findall(r"\b\d{5}\b", text)
@@ -293,6 +301,8 @@ class ChatflowHandler:
         duration = 0
         duration_rerank = 0
         duration_llm = 0
+        duration_classify_kbli = 0
+        duration_classify_specific = 0
         retrieval, duration = await self.retriever(rewritten, collection_choice)
         docs = retrieval["docs"]
         is_kbli_5_digit = retrieval["is_kbli"]
@@ -328,7 +338,7 @@ class ChatflowHandler:
             citations = list(zip(fileids, filenames))
 
         else:
-            texts, fileids, filenames = await self.get_filtered_chunks(rewritten=rewritten, context=context, texts=texts, fileids=fileids, filenames=filenames)
+            texts, fileids, filenames, duration_classify_kbli, duration_classify_specific = await self.get_filtered_chunks(rewritten=rewritten, context=context, texts=texts, fileids=fileids, filenames=filenames)
             reranked, citation_id, citation_name, duration_rerank = await self.rerank_new(rewritten, texts, fileids, filenames)
             transformed_chunk = []
 
@@ -369,7 +379,7 @@ class ChatflowHandler:
             
         question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
         print("Exiting handle_full_retrieval method")
-        return answer, citations, question_id, answer_id, duration, duration_rerank, duration_llm
+        return answer, citations, question_id, answer_id, duration, duration_rerank, duration_llm, duration_classify_kbli, duration_classify_specific
     
     async def handle_failed_answer_from_llm(self, req: ChatRequest, helpdesk_active_status: bool, ret_conversation_id: str, rewritten:str, initial_message: str, category: str, q_category: Tuple, answer: str, question_id: str, answer_id: str):
         print("Entering handle_failed_answer_from_llm method")
@@ -434,10 +444,16 @@ class ChatflowHandler:
             await self.repository.create_new_conversation(ret_conversation_id, req.platform, req.platform_unique_id)
             initial_message = await self.get_greetings_message()
 
+        start_rewriter = time.perf_counter()
         rewritten= await self.rewriter(user_query=req.query, history_context=context)
+        end_rewriter = time.perf_counter()
+        duration_rewriter = end_rewriter - start_rewriter
         await self.repository.give_conversation_title(session_id=ret_conversation_id, rewritten=rewritten)
 
+        start_classify_col = time.perf_counter()
         collection_choice = await self.classifier(req.query, context)
+        end_classify_col = time.perf_counter()
+        duration_classify_col = end_classify_col - start_classify_col
 
         if collection_choice == "uraian_collection":
             collection_choice = "peraturan_collection"
@@ -456,6 +472,9 @@ class ChatflowHandler:
         qdrant_duration_2 = 0
         rerank_duration = 0
         llm_duration = 0
+        duration_classify_kbli = 0
+        duration_classify_specific = 0
+        duration_q_classifier = 0
         faq_response, qdrant_duration_1 = await self.retrieve_faq(rewritten)
 
         if faq_response["matched"]:
@@ -465,12 +484,15 @@ class ChatflowHandler:
             await self.repository.flag_message_is_answered(question_id)
             is_faq=True
         else:
-            answer, citations, question_id, answer_id, qdrant_duration_2, rerank_duration, llm_duration = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
+            answer, citations, question_id, answer_id, qdrant_duration_2, rerank_duration, llm_duration, duration_classify_kbli, duration_classify_specific = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
 
         await self.repository.ingest_start_timestamp(start_timestamp, question_id, answer_id)
         category = await self.repository.ingest_category(question_id, collection_choice)
+        start_q_classifier = time.perf_counter()
         question_classify = await self.question_classifier(rewritten)
-        await self.repository.insert_durations(question_id, answer_id, qdrant_duration_1, qdrant_duration_2, rerank_duration, llm_duration)
+        end_q_classifier = time.perf_counter()
+        duration_q_classifier = end_q_classifier - start_q_classifier
+        await self.repository.insert_durations(question_id, answer_id, qdrant_duration_1, qdrant_duration_2, rerank_duration, llm_duration, duration_rewriter, duration_classify_col, duration_q_classifier, duration_classify_kbli, duration_classify_specific)
         q_category = await self.repository.ingest_question_category(
             question_id,
             question_classify.get("category"),

@@ -465,17 +465,17 @@ class ChatflowRepository:
         print("Exiting get_human_messages method")
         return [row["content"] for row in rows]
     
-    async def insert_durations(self, question_id: int, answer_id: int, qdrant_duration_1: float, qdrant_duration_2: float, rerank_duration: float, llm_duration: float):
+    async def insert_durations(self, question_id: int, answer_id: int, qdrant_duration_1: float, qdrant_duration_2: float, rerank_duration: float, llm_duration: float, rewrite_duration: float = 0, classify_col_duration: float = 0, question_classify_duration: float = 0, kbli_duration: float = 0, specific_duration: float = 0):
         print("Entering insert_durations method")
 
         query = """
-        INSERT INTO bkpm.run_times (dttm, question_id, answer_id, qdrant_faq_time, qdrant_main_time, rerank_time, llm_time)
+        INSERT INTO bkpm.run_times (dttm, question_id, answer_id, qdrant_faq_time, qdrant_main_time, rerank_time, llm_time, duration_rewriter, duration_classify_collection, duration_question_classifier, duration_classify_kbli, duration_classify_specific)
         VALUES
-        (NOW(), $1, $2, $3, $4, $5, $6);
+        (NOW(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
         """
 
         pool = await get_pool()
         async with pool.acquire() as conn:
-            await conn.execute(query, question_id, answer_id, qdrant_duration_1, qdrant_duration_2, rerank_duration, llm_duration)
+            await conn.execute(query, question_id, answer_id, qdrant_duration_1, qdrant_duration_2, rerank_duration, llm_duration, rewrite_duration, classify_col_duration, question_classify_duration, kbli_duration, specific_duration)
 
         print("Exiting insert_durations method")
