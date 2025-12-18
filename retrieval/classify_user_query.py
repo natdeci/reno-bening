@@ -74,8 +74,9 @@ async def classify_user_query(user_query: str) -> dict:
             model=model_name,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt, "options": {"temperature": model_temperature}}
+                {"role": "user", "content": user_prompt},
             ],
+            options={"temperature": float(model_temperature)},
             format="json",
             stream=False
         )

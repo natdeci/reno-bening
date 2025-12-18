@@ -113,8 +113,9 @@ async def classify_collection(user_query: str, history_context: str) -> str:
         model=model_name,
         messages=[
             {"role": "system", "content": prompt},
-            {"role": "user", "content": user, "options": {"temperature": model_temperature}}
-        ]
+            {"role": "user", "content": user},
+        ],
+        options={"temperature": float(model_temperature)},
     )
     
     collection = response["message"]["content"].strip()

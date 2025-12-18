@@ -53,8 +53,9 @@ async def generate_helpdesk_confirmation_answer_new(user_query: str, history_con
         model=model_name,
         messages=[
             {"role": "system", "content": prompt},
-            {"role": "user", "content": user, "options": {"temperature": model_temperature, "repeat_penalty": 2.0, "repeat_last_n": 64}}
-        ]
+            {"role": "user", "content": user},
+        ],
+        options={"temperature": float(model_temperature), "repeat_penalty": 2.0, "repeat_last_n": 64},
     )
 
     return_response = response["message"]["content"].strip()
