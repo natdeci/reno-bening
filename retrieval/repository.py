@@ -417,12 +417,12 @@ class ChatflowRepository:
         print("Exiting check_helpdesk_activation method")
         return helpdesk_active_status
 
-    async def insert_skip_chat(self, session_id: str, human_message: str, ai_message: str):
+    async def insert_skip_chat(self, session_id: str, human_message: str, ai_message: str, rewritten: str = ""):
         print("Entering insert_skip_chat method")
 
         ai_message_id = str(uuid.uuid4())
 
-        human_dict = {"data": {"type": "human", "content": human_message}, "type": "human"}
+        human_dict = {"data": {"type": "human", "content": human_message, "rewritten": rewritten}, "type": "human"}
         ai_dict = {"data": {"id": ai_message_id, "type": "ai", "content": ai_message}, "type": "ai"}
 
         query="""
@@ -448,11 +448,11 @@ class ChatflowRepository:
             print("Warning: Failed to retrieve both IDs after insertion.")
             return 0, 0
         
-    async def get_human_messages(self, session_id: str) -> set[str]:
-        print("Entering get_human_messages method")
+    async def get_rewritten_messages(self, session_id: str) -> set[str]:
+        print("Entering get_rewritten_messages method")
 
         query = """
-        SELECT message -> 'data' ->> 'content' AS content
+        SELECT message -> 'data' ->> 'rewritten' AS content
         FROM bkpm.chat_history
         WHERE session_id = $1
         AND message ->> 'type' = 'human'
@@ -462,7 +462,7 @@ class ChatflowRepository:
         async with pool.acquire() as conn:
             rows = await conn.fetch(query, session_id)
 
-        print("Exiting get_human_messages method")
+        print("Exiting get_rewritten_messages method")
         return [row["content"] for row in rows]
     
     async def insert_durations(self, question_id: int, answer_id: int, qdrant_duration_1: float, qdrant_duration_2: float, rerank_duration: float, llm_duration: float, rewrite_duration: float = 0, classify_col_duration: float = 0, question_classify_duration: float = 0, kbli_duration: float = 0, specific_duration: float = 0):

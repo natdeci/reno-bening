@@ -310,7 +310,7 @@ class ChatflowHandler:
         if is_kbli_5_digit:
             current_kbli_code = self.extract_kbli_code(rewritten)
             if current_kbli_code:
-                human_messages = await self.repository.get_human_messages(ret_conversation_id)
+                human_messages = await self.repository.get_rewritten_messages(ret_conversation_id)
                 asked_kbli_codes = set()
 
                 for msg in human_messages:
@@ -377,7 +377,7 @@ class ChatflowHandler:
                 print("[ERROR] Repeating answer persists, using fallback template")
                 answer = "Mohon maaf, saat ini sedang terjadi kendala pada sistem kami. Silakan coba kembali beberapa saat lagi."
             
-        question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
+        question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
         print("Exiting handle_full_retrieval method")
         return answer, citations, question_id, answer_id, duration, duration_rerank, duration_llm, duration_classify_kbli, duration_classify_specific
     
@@ -425,6 +425,17 @@ class ChatflowHandler:
         print("Exiting check_existing_helpdesk_flow method")
         return None
     
+    def rewrite_query_if_masterlist(self, query: str, collection_name: str) -> str:
+        if collection_name != "peraturan_collection":
+            return query
+
+        pattern = re.compile(r"(master\s*list)", re.IGNORECASE)
+
+        if pattern.search(query):
+            return pattern.sub(r"\1/Pembebasan Bea Masuk", query)
+
+        return query
+    
     async def chatflow_call(self, req: ChatRequest):
         print("Entering chatflow_call method")
         helpdesk_active_status = await self.repository.check_helpdesk_activation()
@@ -458,6 +469,8 @@ class ChatflowHandler:
         if collection_choice == "uraian_collection":
             collection_choice = "peraturan_collection"
 
+        rewritten=self.rewrite_query_if_masterlist(rewritten, collection_choice)
+
         if collection_choice == "helpdesk":
             return await self.handle_helpdesk_response(helpdesk_active_status=helpdesk_active_status, req=req, ret_conversation_id=ret_conversation_id, initial_message=initial_message, rewritten=rewritten)
         
@@ -480,7 +493,7 @@ class ChatflowHandler:
         if faq_response["matched"]:
             citations = faq_response["citations"]
             answer = faq_response["answer"]
-            question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer)
+            question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_is_answered(question_id)
             is_faq=True
         else:
