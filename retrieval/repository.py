@@ -448,7 +448,7 @@ class ChatflowRepository:
             print("Warning: Failed to retrieve both IDs after insertion.")
             return 0, 0
         
-    async def get_rewritten_messages(self, session_id: str) -> set[str]:
+    async def get_rewritten_messages(self, session_id: str) -> list[str]:
         print("Entering get_rewritten_messages method")
 
         query = """

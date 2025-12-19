@@ -14,7 +14,7 @@ def cleanse_llm_response(text: str):
     text = re.sub(r"```[\s\S]*?```", "", text)
     text = re.sub(r"`([^`]*)`", r"\1", text)
     text = re.sub(r"(\*\*|__)(.*?)\1", r"\2", text)   # bold
-    text = re.sub(r"(\*|_)(.*?)\1", r"\2", text)     # italics
+    text = re.sub(r"([*_])(.*?)\1", r"\2", text)     # italics
     text = re.sub(r"~~(.*?)~~", r"\1", text)         # strikethrough
     text = re.sub(r"^\s{0,3}#{1,6}\s+", "", text, flags=re.MULTILINE)
     text = re.sub(r"^\s{0,3}>\s?", "", text, flags=re.MULTILINE)
@@ -30,7 +30,7 @@ def get_fail_message(status: bool, helpdesk_active_status: bool) -> str:
     else:
         return "Mohon maaf, apakah Bapak/Ibu bisa tanyakan dengan lebih detail dan jelas?"
 
-async def generate_answer_new(user_query: str, history_context: str, platform: str, status: bool, helpdesk_active_status: bool, context_docs: list[str]) -> str:
+async def generate_answer_new(user_query: str, history_context: str, platform: str, status: bool, helpdesk_active_status: bool, context_docs: list[str]):
     print("Entering generate_answer_new method")
 
     context = "\n\n".join(context_docs)

@@ -24,7 +24,7 @@ async def generate_helpdesk_confirmation_answer_new(user_query: str, history_con
     </user_query>
     """
 
-    prompt = f"""
+    prompt = """
     You are a helpful and expert assistant.
     You will receive user query in Bahasa Indonesia
     Your ONLY task will be to analyze whether the recieved user query is an affirmation or rejection to the question "Apakah anda ingin kami hubungkan ke helpdesk?"

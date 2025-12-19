@@ -294,7 +294,7 @@ class ChatflowHandler:
                 streak = 1
 
         return False
-    
+
     async def handle_full_retrieval(self, req:ChatRequest, ret_conversation_id: str, status: bool, helpdesk_active_status: bool, context: str, rewritten: str, collection_choice: str):
         print("Entering handle_full_retrieval method")
 
@@ -334,7 +334,7 @@ class ChatflowHandler:
 
         print("Flow KBLI 5 Digit: ", is_kbli_5_digit)
         if is_kbli_5_digit:
-            answer = texts[0] if texts else f"Informasi untuk kode KBLI tersebut tidak ditemukan. Pastikan kode yang dimasukkan sudah benar atau coba kode KBLI lainnya."
+            answer = texts[0] if texts else "Informasi untuk kode KBLI tersebut tidak ditemukan. Pastikan kode yang dimasukkan sudah benar atau coba kode KBLI lainnya."
             citations = list(zip(fileids, filenames))
 
         else:

@@ -206,7 +206,7 @@ def split_by_pasal(text, filename=None, max_chunk_size=2000):
         for m in re.finditer(r'(?i)Ketentuan\s+Pasal\s+(\d+)', text[match.end():candidate_end]):
             try:
                 modified_set.add(int(m.group(1)))
-            except:
+            except (ValueError, TypeError):
                 continue
 
         inner_pasals = list(pasal_pattern.finditer(text, match.end(), candidate_end))
@@ -243,10 +243,7 @@ def split_by_pasal(text, filename=None, max_chunk_size=2000):
         if len(combined) > max_chunk_size:
             sub_chunks = recursive_chunking(content, chunk_size=max_chunk_size, chunk_overlap=300)
             for idx, sc in enumerate(sub_chunks):
-                if idx == 0:
-                    final_chunks.append(header_tag + sc)
-                else:
-                    final_chunks.append(header_tag + sc)
+                final_chunks.append(header_tag + sc)
         else:
             final_chunks.append(combined)
 
