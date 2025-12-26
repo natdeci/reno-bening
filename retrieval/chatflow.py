@@ -489,10 +489,11 @@ class ChatflowHandler:
         duration_classify_specific = 0
         duration_q_classifier = 0
         faq_response, qdrant_duration_1 = await self.retrieve_faq(rewritten)
+        faq_answer = faq_response["answer"]
 
-        if faq_response["matched"]:
+        if faq_response["matched"] and isinstance(faq_answer, str) and faq_answer.strip():
             citations = faq_response["citations"]
-            answer = faq_response["answer"]
+            answer = faq_answer
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_is_answered(question_id)
             is_faq=True
