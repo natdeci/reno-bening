@@ -86,6 +86,8 @@ Output:
 async def classify_kbli(user_query: str, history_context: str) -> str:
     print("Entering classify_kbli method")
     user_content = f"""
+    {prompt}
+
     <context>
     {history_context}
     </context>
@@ -97,10 +99,10 @@ async def classify_kbli(user_query: str, history_context: str) -> str:
 
     try:
         response = await ollama_chat_async(
-                model=model_name,
-                messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_content},
+            model=model_name,
+            messages=[
+                # {"role": "system", "content": prompt},
+                {"role": "user", "content": user_content}
             ],
             options={"temperature": float(model_temperature)},
         )

@@ -46,6 +46,8 @@ async def rewrite_query(user_query: str, history_context: str) -> str:
     print("Entering rewrite_query method")
 
     user = f"""
+    {prompt}
+
     <context>
     {history_context}
     </context>
@@ -58,8 +60,8 @@ async def rewrite_query(user_query: str, history_context: str) -> str:
     response = await ollama_chat_async(
         model=model_name,
         messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": user},
+            # {"role": "system", "content": prompt},
+            {"role": "user", "content": user}
         ],
         options={"temperature": float(model_temperature)},
     )

@@ -64,6 +64,8 @@ async def classify_user_query(user_query: str) -> dict:
     """
 
     user_prompt = f"""
+    {system_prompt}
+
     User query: "{user_query}"
 
     Remember: Output ONLY the JSON object, use EXACT category names from the list.
@@ -73,8 +75,8 @@ async def classify_user_query(user_query: str) -> dict:
         response = await ollama_chat_async(
             model=model_name,
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
+                # {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
             ],
             options={"temperature": float(model_temperature)},
             format="json",

@@ -101,6 +101,8 @@ async def classify_collection(user_query: str, history_context: str) -> str:
     safe_history = sanitize_input(history_context)
 
     user = f"""
+    {prompt}
+
     <context>
     {safe_history}
     </context>
@@ -112,8 +114,8 @@ async def classify_collection(user_query: str, history_context: str) -> str:
     response = await ollama_chat_async(
         model=model_name,
         messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": user},
+            # {"role": "system", "content": prompt},
+            {"role": "user", "content": user}
         ],
         options={"temperature": float(model_temperature)},
     )

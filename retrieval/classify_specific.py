@@ -43,6 +43,8 @@ NOTE: You will receive <context> which is the chat history between you and this 
 async def classify_specific(user_query: str, history_context: str) -> str:
     print("Entering classify_specific method")
     user_content = f"""
+    {prompt}
+
     <context>
     {history_context}
     </context>
@@ -54,10 +56,10 @@ async def classify_specific(user_query: str, history_context: str) -> str:
 
     try:
         response = await ollama_chat_async(
-                model=model_name,
-                messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_content},
+            model=model_name,
+            messages=[
+                # {"role": "system", "content": prompt},
+                {"role": "user", "content": user_content}
             ],
             options={"temperature": float(model_temperature)},
         )

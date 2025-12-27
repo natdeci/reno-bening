@@ -39,24 +39,6 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
 
     safe_query = sanitize_input(user_query)
 
-    user = f"""
-    <context>
-    {history_context}
-    </context>
-
-    <retrieval_results>
-    DO NOT MODIFY
-    {context}
-    </retrieval_results>
-
-    <user_query>
-    {safe_query}
-    Jangan sampai mengubah istilah-istilah berikut jika terkandung dalam jawabanmu: OSS, LKPM, NIB, KBLI, PB, PB-UMKU, AHU, RDTR
-    Tolong jawab dalam Bahasa Indonesia.
-    Anda harus jawab dalam Bahasa Indonesia.
-    </user_query>
-    """
-
     prompt = f"""
     <introduction>
     You are ""Asisten Virtual Badan Koordinasi Penanaman Modal", a formal, intelligent, and reliable assistant that always answers in Bahasa Indonesia.
@@ -122,12 +104,32 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
     </output>
     """
 
+    user = f"""
+    {prompt}
+
+    <context>
+    {history_context}
+    </context>
+
+    <retrieval_results>
+    DO NOT MODIFY
+    {context}
+    </retrieval_results>
+
+    <user_query>
+    {safe_query}
+    Jangan sampai mengubah istilah-istilah berikut jika terkandung dalam jawabanmu: OSS, LKPM, NIB, KBLI, PB, PB-UMKU, AHU, RDTR
+    Tolong jawab dalam Bahasa Indonesia.
+    Anda harus jawab dalam Bahasa Indonesia.
+    </user_query>
+    """
+
     start = time.perf_counter()
     response = await ollama_chat_async(
         model=model_name,
         messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": user},
+            # {"role": "system", "content": prompt},
+            {"role": "user", "content": user}
         ],
         options={"temperature": float(model_temperature), "repeat_penalty": 1.0, "top_k": 64, "top_p": 0.9, "num_ctx": 32000},
     )
