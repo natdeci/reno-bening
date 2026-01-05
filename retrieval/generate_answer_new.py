@@ -131,7 +131,7 @@ async def generate_answer_new(user_query: str, history_context: str, platform: s
             # {"role": "system", "content": prompt},
             {"role": "user", "content": user}
         ],
-        options={"temperature": float(model_temperature), "repeat_penalty": 1.0, "top_k": 64, "top_p": 0.9, "num_ctx": 32000},
+        options={"temperature": float(model_temperature), "repeat_penalty": 1.0, "top_k": 64, "top_p": 0.9, "num_ctx": 16000},
     )
     end = time.perf_counter()
     duration = end - start
