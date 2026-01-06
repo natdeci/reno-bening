@@ -2,7 +2,7 @@ import os
 import asyncio
 from util.ollama_client import ollama_client
 
-async def ollama_chat_async(timeout: float = 180.0, **kwargs):
+async def ollama_chat_async(timeout: float = 120.0, **kwargs):
     return await asyncio.wait_for(
         asyncio.to_thread(ollama_client.chat, **kwargs),
         timeout=timeout
