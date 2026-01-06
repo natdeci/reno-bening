@@ -1,4 +1,4 @@
-from util.db_connection import get_pool
+from util.db_connection import get_pool, pool_stats
 import datetime
 import pytz
 import json
@@ -23,6 +23,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, session_id, now, platform, user_id)
         print("conversation created successfully")
 
@@ -33,6 +35,8 @@ class ChatflowRepository:
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             greetings = await conn.fetchval(query, greetings_id)
             print("Exiting get_greetings method")
             return greetings
@@ -52,6 +56,8 @@ class ChatflowRepository:
         ORDER BY id DESC LIMIT $2
         """
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             rows = await conn.fetch(query, session_id, self.history_limit)
         rows = list(rows)[::-1]
 
@@ -78,6 +84,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, session_id)
         print("Exiting change_is_helpdesk method")
     
@@ -92,6 +100,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, session_id)
         print("Exiting increment_helpdesk_count method")
 
@@ -103,6 +113,8 @@ class ChatflowRepository:
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             revision = await conn.fetchval(query, id)
             print("Exiting get_revision method")
             return revision
@@ -116,6 +128,8 @@ class ChatflowRepository:
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, question_id)
         print("Exiting flag_message_is_answered method")
     
@@ -135,6 +149,8 @@ class ChatflowRepository:
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, session_id, question)
         print("Exiting flag_message_cannot_answer method")
 
@@ -147,6 +163,8 @@ class ChatflowRepository:
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, question_id)
         print("Exiting flag_message_cannot_answer_by_id method")
 
@@ -171,6 +189,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, category, question_id)
 
         print("Exiting ingest_category method")
@@ -191,6 +211,8 @@ class ChatflowRepository:
         pool = await get_pool()
 
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             rows = await conn.fetch(query, session_id)
 
         boolean_values = [row["is_cannot_answer"] for row in rows]
@@ -214,6 +236,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, rewritten, session_id)
         print("Exiting give_conversation_title method")
 
@@ -226,6 +250,8 @@ class ChatflowRepository:
         """
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, category, sub_category, question_id)
 
         print(f"Message categorized as {category} and {sub_category} successfuly")
@@ -245,6 +271,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, json_str, question_id)
         print("Exiting ingest_citations method...")
 
@@ -259,6 +287,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, session_id)
         print("Exiting change_is_helpdesk_status method...")
 
@@ -273,6 +303,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             is_ask_helpdesk = await conn.fetchval(query, session_id)
         print("Exiting check_is_ask_helpdesk method")
         return is_ask_helpdesk
@@ -303,6 +335,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, jakarta_now, session_id, question)
 
         print("Exiting ingest_created_at method")
@@ -317,6 +351,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             rows = await conn.fetch(query)
 
         op = {row["description"]: row["time_info"] for row in rows}
@@ -341,6 +377,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, now, session_id)
 
         print("Exiting ingest_end_timestamp method")
@@ -355,6 +393,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, start_timestamp, question_id, answer_id)
 
         print("Start timestamp successfully ingested")
@@ -374,6 +414,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             rows = await conn.fetch(query, session_id, question)
 
         if not rows:
@@ -394,6 +436,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             is_ask_helpdesk = await conn.fetchval(query, session_id)
         
         print("Exiting check_is_helpdesk method")
@@ -412,6 +456,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             helpdesk_active_status = await conn.fetchval(query)
 
         print("Exiting check_helpdesk_activation method")
@@ -435,6 +481,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             rows = await conn.fetch(query, session_id, json.dumps(human_dict), json.dumps(ai_dict))
 
         if len(rows) == 2:
@@ -460,6 +508,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             rows = await conn.fetch(query, session_id)
 
         print("Exiting get_rewritten_messages method")
@@ -476,6 +526,8 @@ class ChatflowRepository:
 
         pool = await get_pool()
         async with pool.acquire() as conn:
+            pool_status = pool_stats(pool)
+            print(f"Using DB: Max Size: 30, Opened Connection: {pool_status["size"]}, Idle: {pool_status["idle"]}, Used: {pool_status["in_use"]}")
             await conn.execute(query, question_id, answer_id, qdrant_duration_1, qdrant_duration_2, rerank_duration, llm_duration, rewrite_duration, classify_col_duration, question_classify_duration, kbli_duration, specific_duration)
 
         print("Exiting insert_durations method")
