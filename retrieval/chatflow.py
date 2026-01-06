@@ -461,7 +461,8 @@ class ChatflowHandler:
         rewritten= await self.rewriter(user_query=req.query, history_context=context)
         end_rewriter = time.perf_counter()
         duration_rewriter = end_rewriter - start_rewriter
-        await self.repository.give_conversation_title(session_id=ret_conversation_id, rewritten=rewritten)
+        if req.platform == "web":
+            await self.repository.give_conversation_title(session_id=ret_conversation_id, rewritten=rewritten)
 
         start_classify_col = time.perf_counter()
         collection_choice = await self.classifier(req.query, context)
