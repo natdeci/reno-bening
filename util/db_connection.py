@@ -18,7 +18,7 @@ pool = None
 async def init_db():
     global pool
     if pool is None:
-        pool = await asyncpg.create_pool(DB_URL, min_size=1, max_size=30, timeout=60.0)
+        pool = await asyncpg.create_pool(DB_URL, min_size=1, max_size=50, timeout=60.0)
 
 async def close_db():
     global pool
