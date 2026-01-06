@@ -59,6 +59,7 @@ class ChatflowHandler:
         is_helpdesk = False
         helpdesk_confirmation_answer = await self.llm_helpdesk_new(req.query, req.conversation_id)
         question_id, answer_id = await self.repository.insert_skip_chat(req.conversation_id, req.query, helpdesk_confirmation_answer)
+        await self.repository.ingest_start_timestamp(req.start_timestamp, question_id, answer_id)
         await self.repository.flag_message_is_answered(question_id)
         if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
             await self.repository.change_is_ask_helpdesk_status(req.conversation_id)
@@ -107,7 +108,7 @@ class ChatflowHandler:
         print("Exiting generate_helpdesk_routing_response method")
         return helpdesk_response, question_id, answer_id
     
-    async def handle_helpdesk_response(self, helpdesk_active_status: bool, req: ChatRequest, ret_conversation_id: str, initial_message: str, rewritten: str):
+    async def handle_helpdesk_response(self, helpdesk_active_status: bool, req: ChatRequest, ret_conversation_id: str, initial_message: str, rewritten: str, start_timestamp: datetime):
         print("Entering handle_helpdesk_response method")
         print("Helpdesk Status: " + str(helpdesk_active_status))
         is_helpdesk = False
@@ -115,6 +116,7 @@ class ChatflowHandler:
             await self.repository.change_is_helpdesk(ret_conversation_id)
             is_helpdesk = True
         helpdesk_response, question_id, answer_id = await self.generate_helpdesk_routing_response(req=req, ret_conversation_id=ret_conversation_id, helpdesk_active_status=helpdesk_active_status)
+        await self.repository.ingest_start_timestamp(start_timestamp, question_id, answer_id)
         await self.repository.flag_message_is_answered(question_id)
         print("Exiting handle_helpdesk_response method")
         return_data = FinalResponse(
@@ -472,7 +474,7 @@ class ChatflowHandler:
         rewritten=self.rewrite_query_if_masterlist(rewritten, collection_choice)
 
         if collection_choice == "helpdesk":
-            return await self.handle_helpdesk_response(helpdesk_active_status=helpdesk_active_status, req=req, ret_conversation_id=ret_conversation_id, initial_message=initial_message, rewritten=rewritten)
+            return await self.handle_helpdesk_response(helpdesk_active_status=helpdesk_active_status, req=req, ret_conversation_id=ret_conversation_id, initial_message=initial_message, rewritten=rewritten, start_timestamp=req.start_timestamp)
         
         if collection_choice == "skip_collection_check" or collection_choice == "greeting_query" or collection_choice == "thank_you" or collection_choice == "classified_information":
             return await self.handle_default_answering(req=req, ret_conversation_id=ret_conversation_id, rewritten=rewritten, collection_choice=collection_choice)
