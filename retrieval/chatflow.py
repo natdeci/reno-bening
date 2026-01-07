@@ -615,8 +615,8 @@ class ChatflowHandler:
         end_classify_col = time.perf_counter()
         duration_classify_col = end_classify_col - start_classify_col
 
-        if collection_choice == "uraian_collection" or collection_choice == "peraturan_collection":
-            collection_choice = "panduan_collection"
+        if collection_choice == "uraian_collection":
+            collection_choice = "peraturan_collection"
 
         rewritten=self.rewrite_query_if_masterlist(rewritten, collection_choice)
 
