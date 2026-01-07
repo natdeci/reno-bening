@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     rerank_url: str
     bm25_url: str
 
+    timeout: float
     class Config:
         env_file = ".env"
 
