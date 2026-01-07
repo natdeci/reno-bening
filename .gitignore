@@ -14,6 +14,7 @@ ingest_greetings.py
 chainlit.py
 debug_bm25.py
 debug_vectors.py
+coba_sanitize.py
 rerank_history.txt
 rerank_history2.txt
 rerank_history3.txt
