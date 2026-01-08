@@ -367,7 +367,7 @@ class ChatflowHandler:
                     answer, duration_llm = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
                 except asyncio.TimeoutError:
                     print("[ERROR] generate_answer timeout")
-                    answer = "Mohon maaf, saat ini sistem sedang sibuk. Silakan coba kembali beberapa saat lagi."
+                    answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
                     question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
                     await self.repository.flag_message_cannot_answer_by_id(question_id)
                     return_data = FinalResponse(
@@ -390,7 +390,7 @@ class ChatflowHandler:
 
                 except Exception as e:
                     print(f"[ERROR] generate_answer failed: {e}")
-                    answer = "Mohon maaf, saat ini sistem sedang sibuk. Silakan coba kembali beberapa saat lagi."
+                    answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
                     question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
                     await self.repository.flag_message_cannot_answer_by_id(question_id)
                     return_data = FinalResponse(
@@ -512,7 +512,7 @@ class ChatflowHandler:
         except asyncio.TimeoutError:
             print("[ERROR] rewrite_query timeout")
             
-            answer = "Mohon maaf, saat ini sistem sedang sibuk. Silakan coba kembali beberapa saat lagi."
+            answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             rewritten = None
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
@@ -535,7 +535,7 @@ class ChatflowHandler:
             )
         except Exception as e:
             print(f"[ERROR] rewrite_query failed: {e}")
-            answer = "Mohon maaf, saat ini sistem sedang sibuk. Silakan coba kembali beberapa saat lagi."
+            answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             rewritten=None
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
@@ -567,7 +567,7 @@ class ChatflowHandler:
             collection_choice = await self.classifier(req.query, context)
         except asyncio.TimeoutError:
             print("[ERROR] classify_collection timeout")
-            answer = "Mohon maaf, saat ini sistem sedang sibuk. Silakan coba kembali beberapa saat lagi."
+            answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
             return_data = FinalResponse(
@@ -590,7 +590,7 @@ class ChatflowHandler:
 
         except Exception as e:
             print("[ERROR] classify_collection timeout")
-            answer = "Mohon maaf, saat ini sistem sedang sibuk. Silakan coba kembali beberapa saat lagi."
+            answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
             return_data = FinalResponse(
@@ -656,7 +656,7 @@ class ChatflowHandler:
             question_classify = await self.question_classifier(rewritten)
         except asyncio.TimeoutError:
             print("[ERROR] classify_user_query timeout")
-            answer = "Mohon maaf, saat ini sistem sedang sibuk. Silakan coba kembali beberapa saat lagi."
+            answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
             return_data = FinalResponse(
@@ -679,7 +679,7 @@ class ChatflowHandler:
 
         except Exception as e:
             print(f"[ERROR] classify_user_query failed: {e}")
-            answer = "Mohon maaf, saat ini sistem sedang sibuk. Silakan coba kembali beberapa saat lagi."
+            answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
             return_data = FinalResponse(
