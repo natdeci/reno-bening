@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from util.async_ollama import ollama_chat_async
 from util.sanitize_input import sanitize_input
+from util.inference_limiter import ollama_semaphore
 
 load_dotenv()
 
@@ -96,46 +97,47 @@ Additional instructions:
 """
 
 async def classify_collection(user_query: str, history_context: str) -> str:
-    print("Entering classify_collection method")
-    safe_query = sanitize_input(user_query)
-    safe_history = sanitize_input(history_context)
+    async with ollama_semaphore:
+      print("Entering classify_collection method")
+      safe_query = sanitize_input(user_query)
+      safe_history = sanitize_input(history_context)
 
-    user = f"""
-    {prompt}
+      user = f"""
+      {prompt}
 
-    <context>
-    {safe_history}
-    </context>
-        
-    <query>
-    {safe_query}
-    </query>
-    """
-    response = await ollama_chat_async(
-        model=model_name,
-        messages=[
-            # {"role": "system", "content": prompt},
-            {"role": "user", "content": user}
-        ],
-        options={"temperature": float(model_temperature)},
-    )
-    
-    collection = response["message"]["content"].strip()
+      <context>
+      {safe_history}
+      </context>
+         
+      <query>
+      {safe_query}
+      </query>
+      """
+      response = await ollama_chat_async(
+         model=model_name,
+         messages=[
+               # {"role": "system", "content": prompt},
+               {"role": "user", "content": user}
+         ],
+         options={"temperature": float(model_temperature)},
+      )
+      
+      collection = response["message"]["content"].strip()
 
-    allowed = {
-      "panduan_collection",
-      "peraturan_collection",
-      "uraian_collection",
-      "helpdesk",
-      "greeting_query",
-      "thank_you",
-      "skip_collection_check",
-      "classified_information",
-   }
+      allowed = {
+         "panduan_collection",
+         "peraturan_collection",
+         "uraian_collection",
+         "helpdesk",
+         "greeting_query",
+         "thank_you",
+         "skip_collection_check",
+         "classified_information",
+      }
 
-    if collection not in allowed:
-      print(f"Invalid output detected: {collection} → forcing skip_collection_check")
-      return "skip_collection_check"
-    
-    print("Exiting classify_detailed_query method")
-    return collection
+      if collection not in allowed:
+         print(f"Invalid output detected: {collection} → forcing skip_collection_check")
+         return "skip_collection_check"
+      
+      print("Exiting classify_detailed_query method")
+      return collection

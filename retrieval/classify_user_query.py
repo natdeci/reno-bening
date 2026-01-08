@@ -5,6 +5,7 @@ import requests
 from dotenv import load_dotenv
 from util.db_connection import get_pool
 from util.async_ollama import ollama_chat_async
+from util.inference_limiter import ollama_semaphore
 
 load_dotenv()
 
@@ -71,39 +72,41 @@ async def classify_user_query(user_query: str) -> dict:
     Remember: Output ONLY the JSON object, use EXACT category names from the list.
     """
 
-    try:
-        response = await ollama_chat_async(
-            model=model_name,
-            messages=[
-                # {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            options={"temperature": float(model_temperature)},
-            format="json",
-            stream=False
-        )
+    async with ollama_semaphore:
+        try:
+            response = await ollama_chat_async(
+                model=model_name,
+                messages=[
+                    # {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                options={"temperature": float(model_temperature)},
+                format="json",
+                stream=False
+            )
 
-        content = response["message"]["content"].strip()
+            content = response["message"]["content"].strip()
 
-        content = re.sub(r'```json\s*', '', content)
-        content = re.sub(r'```\s*', '', content).strip()
+            content = re.sub(r'```json\s*', '', content)
+            content = re.sub(r'```\s*', '', content).strip()
 
-        json_match = re.search(r'\{[^{}]*\}', content, re.DOTALL)
-        if json_match:
-            content = json_match.group(0)
+            json_match = re.search(r'\{[^{}]*\}', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(0)
 
-        result = json.loads(content)
+            result = json.loads(content)
 
-        if "category" not in result or "sub_category" not in result:
-            raise ValueError("Missing required JSON fields.")
+            if "category" not in result or "sub_category" not in result:
+                raise ValueError("Missing required JSON fields.")
 
-        print("Classification OK:", result)
-        return result
+            print("Classification OK:", result)
+            return result
 
-    except Exception as e:
-        print("Classification error:", e)
-        print("Raw model output:", content)
-        return {
-            "category": "Unknown",
-            "sub_category": "Unknown"
-        }
+        except Exception as e:
+            print("Classification error:", e)
+            print("Raw model output:", content)
+            return {
+                "category": "Unknown",
+                "sub_category": "Unknown"
+            }
+        

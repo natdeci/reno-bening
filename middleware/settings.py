@@ -3,7 +3,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # --- Ollama/LLM Settings ---
     ollama_base_url: str
-    ollama_temperature: float 
+    ollama_temperature: float
+    ollama_timeout: float
     embed_model: str
     llm_model: str
     llm_eval: str
