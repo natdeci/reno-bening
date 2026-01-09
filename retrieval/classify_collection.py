@@ -120,6 +120,7 @@ async def classify_collection(user_query: str, history_context: str) -> str:
                {"role": "user", "content": user}
          ],
          options={"temperature": float(model_temperature)},
+         stream=False
       )
       
       collection = response["message"]["content"].strip()

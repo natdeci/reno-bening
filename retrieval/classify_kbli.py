@@ -107,6 +107,7 @@ async def classify_kbli(user_query: str, history_context: str) -> str:
                     {"role": "user", "content": user_content}
                 ],
                 options={"temperature": float(model_temperature)},
+                stream=False
             )
             print("Exiting classify_kbli method")
             return response["message"]["content"].strip()

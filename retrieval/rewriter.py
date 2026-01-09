@@ -66,6 +66,7 @@ async def rewrite_query(user_query: str, history_context: str) -> str:
                 {"role": "user", "content": user}
             ],
             options={"temperature": float(model_temperature)},
+            stream=False
         )
 
         print("Exiting rewrite_query method")
