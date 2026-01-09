@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     rerank_url: str
     bm25_url: str
 
+    semaphore_num: int
+
     class Config:
         env_file = ".env"
 
