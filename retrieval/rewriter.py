@@ -1,7 +1,6 @@
 import os
-import requests
 from dotenv import load_dotenv
-from util.async_ollama import ollama_chat_async
+from util.vllm_client import vllm_chat_async
 from util.inference_limiter import ollama_semaphore
 
 load_dotenv()
@@ -44,30 +43,25 @@ If NONE of these conditions are met, consider the <user_query> as a new standalo
 """
 
 async def rewrite_query(user_query: str, history_context: str) -> str:
-    async with ollama_semaphore:
-        print("Entering rewrite_query method")
+    print("Entering rewrite_query method")
 
-        user = f"""
-        {prompt}
+    user = f"""
+    {prompt}
 
-        <context>
-        {history_context}
-        </context>
+    <context>
+    {history_context}
+    </context>
 
-        <user_query>
-        {user_query}
-        </user_query>
-        """
+    <user_query>
+    {user_query}
+    </user_query>
+    """
 
-        response = await ollama_chat_async(
-            model=model_name,
-            messages=[
-                # {"role": "system", "content": prompt},
-                {"role": "user", "content": user}
-            ],
-            options={"temperature": float(model_temperature)},
-            stream=False
-        )
+    messages = [
+        {"role": "user", "content": user}
+    ]
 
-        print("Exiting rewrite_query method")
-        return response["message"]["content"].strip()
+    response = await vllm_chat_async(messages, temperature=model_temperature)
+
+    print("Exiting rewrite_query method")
+    return response["message"]["content"].strip()

@@ -1,7 +1,6 @@
 import os
-import re
 from dotenv import load_dotenv
-from util.async_ollama import ollama_chat_async
+from util.vllm_client import vllm_chat_async
 from util.sanitize_input import sanitize_input
 from util.inference_limiter import ollama_semaphore
 
@@ -36,34 +35,29 @@ Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk a
 """
 
 async def generate_helpdesk_confirmation_answer_new(user_query: str, history_context: str) -> str:
-    async with ollama_semaphore:
-        print("Entering generate_helpdesk_confirmation_answer method")
+    print("Entering generate_helpdesk_confirmation_answer method")
 
-        safe_input = sanitize_input(user_query)
+    safe_input = sanitize_input(user_query)
 
-        user = f"""
-        {prompt}
+    user = f"""
+    {prompt}
 
-        <context>
-        {history_context}
-        </context>
+    <context>
+    {history_context}
+    </context>
 
-        <user_query>
-        {safe_input}
-        </user_query>
-        """
+    <user_query>
+    {safe_input}
+    </user_query>
+    """
 
-        response = await ollama_chat_async(
-            model=model_name,
-            messages=[
-                # {"role": "system", "content": prompt},
-                {"role": "user", "content": user}
-            ],
-            options={"temperature": float(model_temperature), "repeat_penalty": 2.0, "repeat_last_n": 64},
-            stream=False
-        )
+    messages = [
+        {"role": "user", "content": user}
+    ]
 
-        return_response = response["message"]["content"].strip()
+    response = await vllm_chat_async(messages, temperature=model_temperature)
 
-        print("Exiting generate_helpdesk_confirmation_answer method")
-        return return_response
+    return_response = response.strip()
+
+    print("Exiting generate_helpdesk_confirmation_answer method")
+    return return_response

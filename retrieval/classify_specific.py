@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from util.async_ollama import ollama_chat_async
+from util.vllm_client import vllm_chat_async
 from util.inference_limiter import ollama_semaphore
 
 load_dotenv()
@@ -42,32 +42,27 @@ NOTE: You will receive <context> which is the chat history between you and this 
 """
 
 async def classify_specific(user_query: str, history_context: str) -> str:
-    async with ollama_semaphore:
-        print("Entering classify_specific method")
-        user_content = f"""
-        {prompt}
+    print("Entering classify_specific method")
+    user_content = f"""
+    {prompt}
 
-        <context>
-        {history_context}
-        </context>
+    <context>
+    {history_context}
+    </context>
 
-        <query>
-        {user_query}
-        </query>
-        """
+    <query>
+    {user_query}
+    </query>
+    """
 
-        try:
-            response = await ollama_chat_async(
-                model=model_name,
-                messages=[
-                    # {"role": "system", "content": prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                options={"temperature": float(model_temperature)},
-                stream=False
-            )
-            print("Exiting classify_specific method")
-            return response["message"]["content"].strip()
-        except Exception as e:
-            print("Error in classify_specific:", e)
-            return "Terjadi kesalahan saat mengklasifikasikan KBLI."
+    messages = [
+        {"role": "user", "content": user_content}
+    ]
+
+    try:
+        response = await vllm_chat_async(messages, temperature=model_temperature)
+        print("Exiting classify_specific method")
+        return response.strip()
+    except Exception as e:
+        print("Error in classify_specific:", e)
+        return "Terjadi kesalahan saat mengklasifikasikan KBLI."

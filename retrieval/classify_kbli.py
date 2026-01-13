@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from util.async_ollama import ollama_chat_async
+from util.vllm_client import vllm_chat_async
 from util.inference_limiter import ollama_semaphore
 
 load_dotenv()
@@ -85,32 +85,27 @@ Output:
 """
 
 async def classify_kbli(user_query: str, history_context: str) -> str:
-    async with ollama_semaphore:
-        print("Entering classify_kbli method")
-        user_content = f"""
-        {prompt}
+    print("Entering classify_kbli method")
+    user_content = f"""
+    {prompt}
 
-        <context>
-        {history_context}
-        </context>
+    <context>
+    {history_context}
+    </context>
 
-        <query>
-        {user_query}
-        </query>
-        """
+    <query>
+    {user_query}
+    </query>
+    """
 
-        try:
-            response = await ollama_chat_async(
-                model=model_name,
-                messages=[
-                    # {"role": "system", "content": prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                options={"temperature": float(model_temperature)},
-                stream=False
-            )
-            print("Exiting classify_kbli method")
-            return response["message"]["content"].strip()
-        except Exception as e:
-            print("Error in classify_kbli:", e)
-            return "Terjadi kesalahan saat mengklasifikasikan KBLI."
+    messages = [
+        {"role": "user", "content": user_content}
+    ]
+
+    try:
+        response = await vllm_chat_async(messages, temperature=model_temperature)
+        print("Exiting classify_kbli method")
+        return response.strip()
+    except Exception as e:
+        print("Error in classify_kbli:", e)
+        return "Terjadi kesalahan saat mengklasifikasikan KBLI."
