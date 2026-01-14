@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # --- VLM Settings ---
     vlm_model: str
     vlm_temperature: float
+
+    # --- vLLM Settings ---
+    vllm_base_url: str
+    vllm_model: str
     
     # --- Qdrant/VectorDB Settings ---
     collection_name: str

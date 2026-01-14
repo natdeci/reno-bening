@@ -44,24 +44,30 @@ If NONE of these conditions are met, consider the <user_query> as a new standalo
 
 async def rewrite_query(user_query: str, history_context: str) -> str:
     print("Entering rewrite_query method")
+    try:
+        user = f"""
+        {prompt}
 
-    user = f"""
-    {prompt}
+        <context>
+        {history_context}
+        </context>
 
-    <context>
-    {history_context}
-    </context>
+        <user_query>
+        {user_query}
+        </user_query>
+        """
 
-    <user_query>
-    {user_query}
-    </user_query>
-    """
+        messages = [
+            {"role": "user", "content": user}
+        ]
 
-    messages = [
-        {"role": "user", "content": user}
-    ]
+        response = await vllm_chat_async(messages, temperature=model_temperature)
 
-    response = await vllm_chat_async(messages, temperature=model_temperature)
-
-    print("Exiting rewrite_query method")
-    return response["message"]["content"].strip()
+        print("Exiting rewrite_query method")
+        return response["message"]["content"].strip()
+    
+    except Exception as e:
+        # Always print something useful
+        print("❌ Error in rewrite_query")
+        print(f"Type: {type(e).__name__}")
+        print(f"Message: {e}")
