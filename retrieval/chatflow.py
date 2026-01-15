@@ -59,10 +59,11 @@ class ChatflowHandler:
         print("Entering handle_helpdesk_confirmation_answer method")
         is_ask_helpdesk_conf = True
         is_helpdesk = False
+        is_answered=True
         helpdesk_confirmation_answer = await self.llm_helpdesk_new(req.query, req.conversation_id)
         question_id, answer_id = await self.repository.insert_skip_chat(req.conversation_id, req.query, helpdesk_confirmation_answer)
         await self.repository.ingest_start_timestamp(req.start_timestamp, question_id, answer_id)
-        await self.repository.flag_message_is_answered(question_id)
+        await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
         if helpdesk_confirmation_answer != "Maaf, bapak/ibu dimohon untuk konfirmasi ya/tidak untuk pengalihan ke helpdesk agen layanan.":
             await self.repository.change_is_ask_helpdesk_status(req.conversation_id)
             is_ask_helpdesk_conf = False
@@ -114,12 +115,13 @@ class ChatflowHandler:
         print("Entering handle_helpdesk_response method")
         print("Helpdesk Status: " + str(helpdesk_active_status))
         is_helpdesk = False
+        is_answered=True
         if helpdesk_active_status:
             await self.repository.change_is_helpdesk(ret_conversation_id)
             is_helpdesk = True
         helpdesk_response, question_id, answer_id = await self.generate_helpdesk_routing_response(req=req, ret_conversation_id=ret_conversation_id, helpdesk_active_status=helpdesk_active_status)
         await self.repository.ingest_start_timestamp(start_timestamp, question_id, answer_id)
-        await self.repository.flag_message_is_answered(question_id)
+        await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
         print("Exiting handle_helpdesk_response method")
         return_data = FinalResponse(
             conversation_id=ret_conversation_id,
@@ -137,10 +139,10 @@ class ChatflowHandler:
     
     async def handle_skip_collection_answer(self, req: ChatRequest, ret_conversation_id: str, rewritten: str, message: str, is_ask_helpdesk: bool):
         print("Entering handle_skip_collection_answer method")
-
+        is_answered=True
         question_id, answer_id = await self.repository.insert_skip_chat(session_id=ret_conversation_id, human_message=req.query, ai_message=message)
         await self.repository.flag_message_cannot_answer_by_id(question_id)
-        await self.repository.flag_message_is_answered(question_id)
+        await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
         print("Exiting handle_skip_collection_answer method")
         return_data = FinalResponse(
             conversation_id=ret_conversation_id,
@@ -367,9 +369,11 @@ class ChatflowHandler:
                     answer, duration_llm = await self.llm_new(user_query=req.query, history_context=context, platform=req.platform, status=status, helpdesk_active_status=helpdesk_active_status, context_docs=reranked)
                 except asyncio.TimeoutError:
                     print("[ERROR] generate_answer timeout")
+                    is_answered=None
                     answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
                     question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
                     await self.repository.flag_message_cannot_answer_by_id(question_id)
+                    await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
                     return_data = FinalResponse(
                         conversation_id=ret_conversation_id,
                         rewritten_query=rewritten,
@@ -390,9 +394,11 @@ class ChatflowHandler:
 
                 except Exception as e:
                     print(f"[ERROR] generate_answer failed: {e}")
+                    is_answered=None
                     answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
                     question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
                     await self.repository.flag_message_cannot_answer_by_id(question_id)
+                    await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
                     return_data = FinalResponse(
                         conversation_id=ret_conversation_id,
                         rewritten_query=rewritten,
@@ -511,11 +517,12 @@ class ChatflowHandler:
             rewritten= await self.rewriter(user_query=req.query, history_context=context)
         except asyncio.TimeoutError:
             print("[ERROR] rewrite_query timeout")
-            
+            is_answered=None
             answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
-            rewritten = None
+            rewritten=None
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
+            await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
             return_data = FinalResponse(
                 conversation_id=ret_conversation_id,
                 rewritten_query="",
@@ -537,8 +544,10 @@ class ChatflowHandler:
             print(f"[ERROR] rewrite_query failed: {e}")
             answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             rewritten=None
+            is_answered=None
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
+            await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
             return_data = FinalResponse(
                 conversation_id=ret_conversation_id,
                 rewritten_query="",
@@ -567,9 +576,11 @@ class ChatflowHandler:
             collection_choice = await self.classifier(req.query, context)
         except asyncio.TimeoutError:
             print("[ERROR] classify_collection timeout")
+            is_answered=None
             answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
+            await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
             return_data = FinalResponse(
                 conversation_id=ret_conversation_id,
                 rewritten_query=rewritten,
@@ -589,10 +600,12 @@ class ChatflowHandler:
             )
 
         except Exception as e:
-            print("[ERROR] classify_collection timeout")
+            print(f"[ERROR] classify_collection failed: {e}")
+            is_answered=None
             answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
+            await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
             return_data = FinalResponse(
                 conversation_id=ret_conversation_id,
                 rewritten_query=rewritten,
@@ -643,8 +656,9 @@ class ChatflowHandler:
         if faq_response["matched"] and isinstance(faq_answer, str) and faq_answer.strip():
             citations = faq_response["citations"]
             answer = faq_answer
+            is_answered=True
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
-            await self.repository.flag_message_is_answered(question_id)
+            await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
             is_faq=True
         else:
             answer, citations, question_id, answer_id, qdrant_duration_2, rerank_duration, llm_duration, duration_classify_kbli, duration_classify_specific = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
@@ -656,9 +670,11 @@ class ChatflowHandler:
             question_classify = await self.question_classifier(rewritten)
         except asyncio.TimeoutError:
             print("[ERROR] classify_user_query timeout")
+            is_answered=None
             answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
+            await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
             return_data = FinalResponse(
                 conversation_id=ret_conversation_id,
                 rewritten_query=rewritten,
@@ -679,9 +695,11 @@ class ChatflowHandler:
 
         except Exception as e:
             print(f"[ERROR] classify_user_query failed: {e}")
+            is_answered=None
             answer = "Mohon maaf, saat ini terdapat peningkatan jumlah pesan yang masuk. Silakan kirim ulang pesan Anda beberapa saat lagi. Terimakasih."
             question_id, answer_id = await self.repository.insert_skip_chat(ret_conversation_id, req.query, answer, rewritten)
             await self.repository.flag_message_cannot_answer_by_id(question_id)
+            await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
             return_data = FinalResponse(
                 conversation_id=ret_conversation_id,
                 rewritten_query=rewritten,
