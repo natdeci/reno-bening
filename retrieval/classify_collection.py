@@ -135,5 +135,5 @@ async def classify_collection(user_query: str, history_context: str) -> str:
       print(f"Invalid output detected: {collection} → forcing skip_collection_check")
       return "skip_collection_check"
    
-   print("Exiting classify_detailed_query method")
+   print("Exiting classify_collection method")
    return collection

@@ -2,6 +2,7 @@ import os
 import httpx
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 VLLM_BASE_URL = os.getenv("VLLM_BASE_URL")
@@ -18,4 +19,5 @@ async def vllm_chat_async(messages, temperature=0.0):
             }
         )
         data = response.json()
+        print(type(data["choices"][0]["message"]["content"]))
         return data["choices"][0]["message"]["content"]

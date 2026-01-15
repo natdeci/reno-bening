@@ -64,7 +64,7 @@ async def rewrite_query(user_query: str, history_context: str) -> str:
         response = await vllm_chat_async(messages, temperature=model_temperature)
 
         print("Exiting rewrite_query method")
-        return response["message"]["content"].strip()
+        return response.strip()
     
     except Exception as e:
         # Always print something useful
