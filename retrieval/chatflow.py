@@ -661,7 +661,9 @@ class ChatflowHandler:
             await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
             is_faq=True
         else:
+            is_answered=False
             answer, citations, question_id, answer_id, qdrant_duration_2, rerank_duration, llm_duration, duration_classify_kbli, duration_classify_specific = await self.handle_full_retrieval(req=req, ret_conversation_id=ret_conversation_id, status=status, helpdesk_active_status=helpdesk_active_status, context=context, rewritten=rewritten, collection_choice=collection_choice)
+            await self.repository.flag_message_is_answered(question_id, answer_id, is_answered)
 
         await self.repository.ingest_start_timestamp(start_timestamp, question_id, answer_id)
         category = await self.repository.ingest_category(question_id, collection_choice)
