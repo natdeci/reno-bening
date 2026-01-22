@@ -8,8 +8,9 @@ load_dotenv()
 VLLM_BASE_URL = os.getenv("VLLM_BASE_URL")
 VLLM_MODEL = os.getenv("VLLM_MODEL")
 
+VLLM_TIMEOUT = int(os.getenv("VLLM_TIMEOUT"))
 async def vllm_chat_async(messages, temperature=0.0):
-    async with httpx.AsyncClient(timeout=300) as client:
+    async with httpx.AsyncClient(timeout=VLLM_TIMEOUT) as client:
         response = await client.post(
             f"{VLLM_BASE_URL}/v1/chat/completions",
             json={
