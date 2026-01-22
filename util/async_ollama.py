@@ -4,15 +4,15 @@ from util.ollama_client import ollama_client
 from dotenv import load_dotenv
 
 load_dotenv()
-timeout = float(os.getenv("OLLAMA_TIMEOUT"))
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT"))
 
-async def ollama_chat_async(timeout: float = timeout, **kwargs):
+async def ollama_chat_async(timeout: float = OLLAMA_TIMEOUT, **kwargs):
     return await asyncio.wait_for(
         asyncio.to_thread(ollama_client.chat, **kwargs),
         timeout=timeout
     )
 
-async def async_embed(text: str, timeout: float = timeout):
+async def async_embed(text: str, timeout: float = OLLAMA_TIMEOUT):
     return await asyncio.wait_for(
         asyncio.to_thread(
             ollama_client.embeddings,

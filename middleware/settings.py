@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     ollama_base_url: str
     ollama_temperature: float
     ollama_timeout: float
+    vllm_timeout: int
     embed_model: str
     llm_model: str
     llm_eval: str
